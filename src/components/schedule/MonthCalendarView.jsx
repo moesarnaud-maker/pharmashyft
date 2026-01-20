@@ -4,14 +4,14 @@ import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-import { ChevronLeft, ChevronRight, Calendar, MapPin, Send, Plus } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Calendar, Send, Plus } from 'lucide-react';
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, addMonths, subMonths, startOfWeek, endOfWeek, isSameMonth } from 'date-fns';
 import ShiftEditorDialog from './ShiftEditorDialog';
 import PublishScheduleDialog from './PublishScheduleDialog';
+import LocationSelector from './LocationSelector';
 
 export default function MonthCalendarView({
   employees = [],
@@ -25,7 +25,7 @@ export default function MonthCalendarView({
 }) {
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [selectedTeam, setSelectedTeam] = useState('all');
-  const [selectedLocation, setSelectedLocation] = useState('all');
+  const [selectedLocation, setSelectedLocation] = useState(locations.find(l => l.status === 'active')?.id || '');
   const [selectedDay, setSelectedDay] = useState(null);
   const [selectedShift, setSelectedShift] = useState(null);
   const [showDraftShifts, setShowDraftShifts] = useState(isAdmin);
@@ -57,6 +57,11 @@ export default function MonthCalendarView({
     
     let shifts = scheduledShifts.filter(s => s.date === dateStr);
     
+    // ALWAYS filter by selected location (required)
+    if (selectedLocation) {
+      shifts = shifts.filter(s => s.location_id === selectedLocation);
+    }
+    
     // Filter by status (employees only see published, admin can toggle)
     if (!isAdmin || !showDraftShifts) {
       shifts = shifts.filter(s => s.status === 'published');
@@ -68,11 +73,6 @@ export default function MonthCalendarView({
         const emp = employees.find(e => e.id === s.employee_id);
         return emp?.team_id === selectedTeam;
       });
-    }
-
-    // Filter by location
-    if (selectedLocation !== 'all') {
-      shifts = shifts.filter(s => s.location_id === selectedLocation);
     }
 
     // Check for absences that override shifts
@@ -104,7 +104,10 @@ export default function MonthCalendarView({
     setShowShiftEditor(true);
   };
 
-  const draftShifts = isAdmin ? scheduledShifts.filter(s => s.status === 'draft') : [];
+  // Filter drafts by selected location
+  const draftShifts = isAdmin 
+    ? scheduledShifts.filter(s => s.status === 'draft' && s.location_id === selectedLocation) 
+    : [];
 
   const absenceColors = {
     vacation: 'bg-blue-100 text-blue-700',
@@ -118,10 +121,17 @@ export default function MonthCalendarView({
       <Card className="border-0 shadow-lg">
         <CardHeader>
           <div className="flex items-center justify-between flex-wrap gap-4">
-            <CardTitle className="flex items-center gap-2">
-              <Calendar className="w-5 h-5" />
-              Schedule Calendar
-            </CardTitle>
+            <div className="flex items-center gap-4">
+              <CardTitle className="flex items-center gap-2">
+                <Calendar className="w-5 h-5" />
+                Schedule Calendar
+              </CardTitle>
+              <LocationSelector
+                locations={locations}
+                selectedLocation={selectedLocation}
+                onLocationChange={setSelectedLocation}
+              />
+            </div>
             
             <div className="flex items-center gap-3 flex-wrap">
               {isAdmin && (
@@ -155,17 +165,7 @@ export default function MonthCalendarView({
                 </SelectContent>
               </Select>
 
-              <Select value={selectedLocation} onValueChange={setSelectedLocation}>
-                <SelectTrigger className="w-40">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Locations</SelectItem>
-                  {locations.filter(l => l.status === 'active').map(l => (
-                    <SelectItem key={l.id} value={l.id}>{l.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+
 
               <Button variant="outline" size="sm" onClick={() => setCurrentMonth(subMonths(currentMonth, 1))}>
                 <ChevronLeft className="w-4 h-4" />
@@ -277,6 +277,7 @@ export default function MonthCalendarView({
             locations={locations}
             employeeLocations={employeeLocations}
             currentUser={currentUser}
+            defaultLocationId={selectedLocation}
           />
 
           <PublishScheduleDialog

@@ -18,16 +18,17 @@ export default function ShiftEditorDialog({
   employees = [],
   locations = [],
   employeeLocations = [],
-  currentUser
+  currentUser,
+  defaultLocationId = null
 }) {
   const queryClient = useQueryClient();
   const [formData, setFormData] = useState({
-    employee_id: '',
+    employee_id: shift?.employee_id || '',
     start_time: '09:00',
     end_time: '17:00',
     break_minutes: 30,
     expected_hours: 7.6,
-    location_id: '',
+    location_id: defaultLocationId || '',
     notes: '',
   });
 
@@ -45,11 +46,12 @@ export default function ShiftEditorDialog({
     }
   }, [shift]);
 
-  const eligibleLocations = formData.employee_id 
-    ? locations.filter(loc => 
-        employeeLocations.some(el => el.employee_id === formData.employee_id && el.location_id === loc.id)
+  // Filter employees eligible for selected location
+  const eligibleEmployees = formData.location_id
+    ? employees.filter(emp =>
+        employeeLocations.some(el => el.employee_id === emp.id && el.location_id === formData.location_id)
       )
-    : [];
+    : employees;
 
   const saveMutation = useMutation({
     mutationFn: async () => {
@@ -116,21 +118,42 @@ export default function ShiftEditorDialog({
         
         <div className="space-y-4">
           <div>
-            <Label>Employee</Label>
+            <Label>Location *</Label>
             <Select
-              value={formData.employee_id}
-              onValueChange={(v) => setFormData({ ...formData, employee_id: v, location_id: '' })}
+              value={formData.location_id}
+              onValueChange={(v) => setFormData({ ...formData, location_id: v })}
               disabled={!!shift}
             >
               <SelectTrigger>
-                <SelectValue placeholder="Select employee" />
+                <SelectValue placeholder="Select location" />
               </SelectTrigger>
               <SelectContent>
-                {employees.filter(e => e.status === 'active').map(emp => (
+                {locations.filter(l => l.status === 'active').map(loc => (
+                  <SelectItem key={loc.id} value={loc.id}>{loc.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div>
+            <Label>Employee *</Label>
+            <Select
+              value={formData.employee_id}
+              onValueChange={(v) => setFormData({ ...formData, employee_id: v })}
+              disabled={!!shift || !formData.location_id}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder={formData.location_id ? "Select employee" : "Select location first"} />
+              </SelectTrigger>
+              <SelectContent>
+                {eligibleEmployees.filter(e => e.status === 'active').map(emp => (
                   <SelectItem key={emp.id} value={emp.id}>{emp.employee_number}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
+            {formData.location_id && eligibleEmployees.length === 0 && (
+              <p className="text-sm text-red-600 mt-1">No employees eligible for this location</p>
+            )}
           </div>
 
           <div className="grid grid-cols-2 gap-4">
@@ -172,25 +195,7 @@ export default function ShiftEditorDialog({
             </div>
           </div>
 
-          <div>
-            <Label>Location</Label>
-            <Select
-              value={formData.location_id}
-              onValueChange={(v) => setFormData({ ...formData, location_id: v })}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Select location" />
-              </SelectTrigger>
-              <SelectContent>
-                {eligibleLocations.map(loc => (
-                  <SelectItem key={loc.id} value={loc.id}>{loc.name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            {formData.employee_id && eligibleLocations.length === 0 && (
-              <p className="text-sm text-red-600 mt-1">No eligible locations for this employee</p>
-            )}
-          </div>
+
 
           <div>
             <Label>Notes</Label>
