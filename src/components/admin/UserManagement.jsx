@@ -7,12 +7,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { UserPlus, Search, MoreHorizontal, Mail, Shield, Users, Calendar } from 'lucide-react';
+import { UserPlus, Search, MoreHorizontal, Mail, Shield, Users } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { format } from 'date-fns';
-import { useQuery } from '@tanstack/react-query';
-import { base44 } from '@/api/base44Client';
-import EmployeeScheduleHistory from '@/components/schedule/EmployeeScheduleHistory';
+import EmployeeProfileDialog from '@/components/employee/EmployeeProfileDialog';
 
 export default function UserManagement({ 
   users = [], 
@@ -26,19 +23,8 @@ export default function UserManagement({
   const [searchTerm, setSearchTerm] = useState('');
   const [showInviteDialog, setShowInviteDialog] = useState(false);
   const [inviteForm, setInviteForm] = useState({ email: '', role: 'user' });
-  const [employeeForm, setEmployeeForm] = useState({});
-  const [showEmployeeDialog, setShowEmployeeDialog] = useState(false);
+  const [selectedUser, setSelectedUser] = useState(null);
   const [selectedEmployee, setSelectedEmployee] = useState(null);
-
-  const { data: scheduleTemplates = [] } = useQuery({
-    queryKey: ['scheduleTemplates'],
-    queryFn: () => base44.entities.ScheduleTemplate.list(),
-  });
-
-  const { data: scheduleAssignments = [] } = useQuery({
-    queryKey: ['employeeScheduleAssignments'],
-    queryFn: () => base44.entities.EmployeeScheduleAssignment.list(),
-  });
 
   const getEmployeeForUser = (userId) => employees.find(e => e.user_id === userId);
   const getTeamName = (teamId) => teams.find(t => t.id === teamId)?.name || '-';
@@ -56,23 +42,13 @@ export default function UserManagement({
 
   const handleEditEmployee = (user) => {
     const emp = getEmployeeForUser(user.id);
-    setEmployeeForm({
-      user_id: user.id,
-      user_name: user.full_name,
-      employee_id: emp?.id,
-      employee_number: emp?.employee_number || '',
-      team_id: emp?.team_id || '',
-      schedule_id: emp?.schedule_id || '',
-      contract_hours_week: emp?.contract_hours_week || 38,
-      vacation_days_total: emp?.vacation_days_total || 20
-    });
+    setSelectedUser(user);
     setSelectedEmployee(emp);
-    setShowEmployeeDialog(true);
   };
 
-  const handleSaveEmployee = () => {
-    onUpdateEmployee(employeeForm);
-    setShowEmployeeDialog(false);
+  const handleCloseProfile = () => {
+    setSelectedUser(null);
+    setSelectedEmployee(null);
   };
 
   const roleColors = {
@@ -205,89 +181,15 @@ export default function UserManagement({
         </DialogContent>
       </Dialog>
 
-      {/* Employee Details Dialog */}
-      <Dialog open={showEmployeeDialog} onOpenChange={setShowEmployeeDialog}>
-        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Edit Employee: {employeeForm.user_name}</DialogTitle>
-          </DialogHeader>
-
-          {selectedEmployee && (
-            <EmployeeScheduleHistory
-              employeeId={selectedEmployee.id}
-              assignments={scheduleAssignments.filter(a => a.employee_id === selectedEmployee.id)}
-              templates={scheduleTemplates}
-            />
-          )}
-
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label>Employee Number</Label>
-              <Input
-                placeholder="EMP001"
-                value={employeeForm.employee_number}
-                onChange={(e) => setEmployeeForm({ ...employeeForm, employee_number: e.target.value })}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Team</Label>
-              <Select
-                value={employeeForm.team_id}
-                onValueChange={(v) => setEmployeeForm({ ...employeeForm, team_id: v })}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select team..." />
-                </SelectTrigger>
-                <SelectContent>
-                  {teams.map(team => (
-                    <SelectItem key={team.id} value={team.id}>{team.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label>Schedule</Label>
-              <Select
-                value={employeeForm.schedule_id}
-                onValueChange={(v) => setEmployeeForm({ ...employeeForm, schedule_id: v })}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select schedule..." />
-                </SelectTrigger>
-                <SelectContent>
-                  {schedules.map(s => (
-                    <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Contract Hours/Week</Label>
-                <Input
-                  type="number"
-                  value={employeeForm.contract_hours_week}
-                  onChange={(e) => setEmployeeForm({ ...employeeForm, contract_hours_week: parseFloat(e.target.value) })}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Vacation Days/Year</Label>
-                <Input
-                  type="number"
-                  value={employeeForm.vacation_days_total}
-                  onChange={(e) => setEmployeeForm({ ...employeeForm, vacation_days_total: parseFloat(e.target.value) })}
-                />
-              </div>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowEmployeeDialog(false)}>Cancel</Button>
-            <Button onClick={handleSaveEmployee} className="bg-blue-600 hover:bg-blue-700">
-              Save Changes
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <EmployeeProfileDialog
+        employee={selectedEmployee}
+        user={selectedUser}
+        open={!!selectedUser}
+        onClose={handleCloseProfile}
+        onUpdateEmployee={onUpdateEmployee}
+        teams={teams}
+        schedules={schedules}
+      />
     </div>
   );
 }
