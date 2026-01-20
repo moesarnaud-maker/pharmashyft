@@ -48,9 +48,13 @@ export default function EmployeeDetailsTab({ employee, user, teams, schedules, o
 
   const saveLocationsMutation = useMutation({
     mutationFn: async () => {
+      // Fetch fresh data to avoid stale references
+      const currentEmployeeLocations = await base44.entities.EmployeeLocation.filter({ 
+        employee_id: employee.id 
+      });
+      
       // Remove existing eligibilities
-      const existing = employeeLocations.filter(el => el.employee_id === employee.id);
-      for (const el of existing) {
+      for (const el of currentEmployeeLocations) {
         await base44.entities.EmployeeLocation.delete(el.id);
       }
 
