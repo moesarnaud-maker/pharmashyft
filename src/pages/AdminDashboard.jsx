@@ -3,7 +3,7 @@ import { base44 } from '@/api/base44Client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
-import { Users, Settings, FileText, Building, Download, Shield } from 'lucide-react';
+import { Users, Settings, FileText, Building, Download, Shield, BarChart2 } from 'lucide-react';
 
 import StatsCard from '@/components/common/StatsCard';
 import UserManagement from '@/components/admin/UserManagement';
@@ -11,6 +11,7 @@ import TeamManagement from '@/components/admin/TeamManagement';
 import SettingsPanel from '@/components/admin/SettingsPanel';
 import AuditLogViewer from '@/components/admin/AuditLogViewer';
 import ExportPanel from '@/components/reports/ExportPanel';
+import ReportsPanel from '@/components/reports/ReportsPanel';
 
 export default function AdminDashboard() {
   const [user, setUser] = useState(null);
@@ -57,6 +58,11 @@ export default function AdminDashboard() {
   const { data: timesheetLines = [] } = useQuery({
     queryKey: ['timesheetLines'],
     queryFn: () => base44.entities.TimesheetLine.list('-date', 1000),
+  });
+
+  const { data: timeEntries = [] } = useQuery({
+    queryKey: ['timeEntries'],
+    queryFn: () => base44.entities.TimeEntry.list('-date', 1000),
   });
 
   const inviteUserMutation = useMutation({
@@ -207,6 +213,10 @@ export default function AdminDashboard() {
               <FileText className="w-4 h-4" />
               Audit Log
             </TabsTrigger>
+            <TabsTrigger value="reports" className="gap-2">
+              <BarChart2 className="w-4 h-4" />
+              Reports
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="users">
@@ -251,6 +261,16 @@ export default function AdminDashboard() {
 
           <TabsContent value="audit">
             <AuditLogViewer logs={auditLogs} />
+          </TabsContent>
+
+          <TabsContent value="reports">
+            <ReportsPanel
+              employees={employees}
+              teams={teams}
+              users={users}
+              timesheetLines={timesheetLines}
+              timeEntries={timeEntries}
+            />
           </TabsContent>
         </Tabs>
       </div>
