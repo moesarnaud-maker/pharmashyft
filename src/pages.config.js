@@ -1,17 +1,19 @@
-import EmployeeDashboard from './pages/EmployeeDashboard';
-import ManagerDashboard from './pages/ManagerDashboard';
 import AdminDashboard from './pages/AdminDashboard';
+import EmployeeDashboard from './pages/EmployeeDashboard';
 import Home from './pages/Home';
 import Kiosk from './pages/Kiosk';
+import ManagerDashboard from './pages/ManagerDashboard';
+import ScheduleCalendar from './pages/ScheduleCalendar';
 import __Layout from './Layout.jsx';
 
 
 export const PAGES = {
-    "EmployeeDashboard": EmployeeDashboard,
-    "ManagerDashboard": ManagerDashboard,
     "AdminDashboard": AdminDashboard,
+    "EmployeeDashboard": EmployeeDashboard,
     "Home": Home,
     "Kiosk": Kiosk,
+    "ManagerDashboard": ManagerDashboard,
+    "ScheduleCalendar": ScheduleCalendar,
 }
 
 export const pagesConfig = {
