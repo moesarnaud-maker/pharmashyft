@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
-import { Trash2 } from 'lucide-react';
+import { Trash2, AlertTriangle, CheckCircle } from 'lucide-react';
 
 export default function ShiftEditorDialog({ 
   open, 
@@ -32,6 +32,12 @@ export default function ShiftEditorDialog({
     notes: '',
   });
 
+  const { data: availabilities = [] } = useQuery({
+    queryKey: ['employeeAvailabilities'],
+    queryFn: () => base44.entities.EmployeeAvailability.list(),
+    enabled: open,
+  });
+
   useEffect(() => {
     if (shift) {
       setFormData({
@@ -52,6 +58,55 @@ export default function ShiftEditorDialog({
         employeeLocations.some(el => el.employee_id === emp.id && el.location_id === formData.location_id)
       )
     : employees;
+
+  // Check availability conflicts
+  const checkAvailability = () => {
+    if (!formData.employee_id || !date) return null;
+
+    const shiftDate = new Date(date);
+    const weekday = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'][shiftDate.getDay()];
+    
+    const empAvail = availabilities.find(a => 
+      a.employee_id === formData.employee_id && a.weekday === weekday
+    );
+
+    if (!empAvail) return null;
+
+    if (!empAvail.is_available) {
+      return { type: 'unavailable', message: 'Employee marked as unavailable on this day' };
+    }
+
+    const shiftStart = formData.start_time;
+    const shiftEnd = formData.end_time;
+    const availStart = empAvail.available_start;
+    const availEnd = empAvail.available_end;
+
+    if (shiftStart < availStart || shiftEnd > availEnd) {
+      return { 
+        type: 'time_conflict', 
+        message: `Outside availability window (${availStart} - ${availEnd})`
+      };
+    }
+
+    const shiftHours = (new Date(`2000-01-01T${shiftEnd}`) - new Date(`2000-01-01T${shiftStart}`)) / (1000 * 60 * 60) - (formData.break_minutes / 60);
+    if (empAvail.max_hours && shiftHours > empAvail.max_hours) {
+      return {
+        type: 'hours_exceeded',
+        message: `Exceeds max hours (${empAvail.max_hours}h) for this day`
+      };
+    }
+
+    if (empAvail.notes) {
+      return {
+        type: 'note',
+        message: empAvail.notes
+      };
+    }
+
+    return { type: 'available', message: 'Fits employee availability' };
+  };
+
+  const availabilityStatus = checkAvailability();
 
   const saveMutation = useMutation({
     mutationFn: async () => {
@@ -205,6 +260,39 @@ export default function ShiftEditorDialog({
               rows={2}
             />
           </div>
+
+          {/* Availability Status */}
+          {availabilityStatus && (
+            <div className={`p-3 rounded-lg border ${
+              availabilityStatus.type === 'available' ? 'bg-green-50 border-green-200' :
+              availabilityStatus.type === 'note' ? 'bg-blue-50 border-blue-200' :
+              'bg-amber-50 border-amber-200'
+            }`}>
+              <div className="flex items-start gap-2">
+                {availabilityStatus.type === 'available' && (
+                  <CheckCircle className="w-5 h-5 text-green-600 mt-0.5" />
+                )}
+                {(availabilityStatus.type === 'unavailable' || availabilityStatus.type === 'time_conflict' || availabilityStatus.type === 'hours_exceeded') && (
+                  <AlertTriangle className="w-5 h-5 text-amber-600 mt-0.5" />
+                )}
+                {availabilityStatus.type === 'note' && (
+                  <CheckCircle className="w-5 h-5 text-blue-600 mt-0.5" />
+                )}
+                <div className="flex-1">
+                  <div className="font-medium text-sm">
+                    {availabilityStatus.type === 'available' && 'Available'}
+                    {availabilityStatus.type === 'unavailable' && 'Unavailable'}
+                    {availabilityStatus.type === 'time_conflict' && 'Time Conflict'}
+                    {availabilityStatus.type === 'hours_exceeded' && 'Hours Exceeded'}
+                    {availabilityStatus.type === 'note' && 'Availability Note'}
+                  </div>
+                  <div className="text-sm text-slate-600 mt-0.5">
+                    {availabilityStatus.message}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
         <DialogFooter className="flex justify-between">
