@@ -48,6 +48,10 @@ export default function EmployeeDetailsTab({ employee, user, teams, schedules, o
 
   const saveLocationsMutation = useMutation({
     mutationFn: async () => {
+      if (!employee?.id) {
+        throw new Error('Employee ID is required');
+      }
+
       // Fetch fresh data to avoid stale references
       const currentEmployeeLocations = await base44.entities.EmployeeLocation.filter({ 
         employee_id: employee.id 
@@ -55,9 +59,14 @@ export default function EmployeeDetailsTab({ employee, user, teams, schedules, o
       
       const currentLocationIds = currentEmployeeLocations.map(el => el.location_id);
       
+      // Ensure main location is included in eligible locations
+      const finalEligibleIds = eligibleLocationIds.includes(formData.main_location_id)
+        ? eligibleLocationIds
+        : [...eligibleLocationIds, formData.main_location_id];
+      
       // Remove locations that are no longer eligible
       const toRemove = currentEmployeeLocations.filter(el => 
-        !eligibleLocationIds.includes(el.location_id)
+        !finalEligibleIds.includes(el.location_id)
       );
       
       for (const el of toRemove) {
@@ -70,7 +79,7 @@ export default function EmployeeDetailsTab({ employee, user, teams, schedules, o
       }
 
       // Add new eligible locations
-      const toAdd = eligibleLocationIds.filter(locId => 
+      const toAdd = finalEligibleIds.filter(locId => 
         !currentLocationIds.includes(locId)
       );
       
@@ -88,9 +97,9 @@ export default function EmployeeDetailsTab({ employee, user, teams, schedules, o
   });
 
   const handleSave = async () => {
-    // Validate main location is in eligible locations
-    if (formData.main_location_id && !eligibleLocationIds.includes(formData.main_location_id)) {
-      toast.error('Main location must be included in eligible locations');
+    // Validation
+    if (!formData.main_location_id) {
+      toast.error('Main location is required');
       return;
     }
 
@@ -99,16 +108,29 @@ export default function EmployeeDetailsTab({ employee, user, teams, schedules, o
       return;
     }
 
+    // Auto-add main location to eligible if not already included
+    const finalEligibleIds = eligibleLocationIds.includes(formData.main_location_id)
+      ? eligibleLocationIds
+      : [...eligibleLocationIds, formData.main_location_id];
+
+    if (finalEligibleIds.length !== eligibleLocationIds.length) {
+      setEligibleLocationIds(finalEligibleIds);
+    }
+
     try {
+      // Save locations first
       await saveLocationsMutation.mutateAsync();
       
-      onUpdate({
+      // Then save employee details
+      await onUpdate({
         user_id: user.id,
         employee_id: employee?.id,
         ...formData,
       });
+
+      toast.success('Employee profile saved successfully');
     } catch (error) {
-      toast.error('Failed to save locations');
+      toast.error('Failed to save employee profile');
       console.error(error);
     }
   };

@@ -91,25 +91,29 @@ export default function AdminDashboard() {
         await base44.entities.Employee.update(data.employee_id, {
           employee_number: data.employee_number,
           team_id: data.team_id,
+          main_location_id: data.main_location_id,
           schedule_id: data.schedule_id,
           contract_hours_week: data.contract_hours_week,
           vacation_days_total: data.vacation_days_total,
+          pin_code: data.pin_code,
         });
       } else {
         await base44.entities.Employee.create({
           user_id: data.user_id,
           employee_number: data.employee_number,
           team_id: data.team_id,
+          main_location_id: data.main_location_id,
           schedule_id: data.schedule_id,
           contract_hours_week: data.contract_hours_week,
           vacation_days_total: data.vacation_days_total,
+          pin_code: data.pin_code,
           status: 'active',
         });
       }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['employees'] });
-      toast.success('Employee updated successfully');
+      toast.success('Employee profile updated successfully');
     },
   });
 
