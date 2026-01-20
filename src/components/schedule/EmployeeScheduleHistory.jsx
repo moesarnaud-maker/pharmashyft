@@ -9,8 +9,9 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Calendar, Plus, History } from 'lucide-react';
+import { Calendar, Plus, History, Trash2 } from 'lucide-react';
 import { format } from 'date-fns';
+import { regenerateShiftsForEmployee } from './ShiftGenerator';
 
 export default function EmployeeScheduleHistory({ 
   employeeId, 
@@ -38,14 +39,20 @@ export default function EmployeeScheduleHistory({
       }
 
       // Create new assignment
-      await base44.entities.EmployeeScheduleAssignment.create({
+      const assignment = await base44.entities.EmployeeScheduleAssignment.create({
         employee_id: employeeId,
         ...formData,
       });
+
+      // Generate shifts from template
+      await regenerateShiftsForEmployee(employeeId);
+
+      return assignment;
     },
     onSuccess: () => {
-      toast.success('Schedule assigned');
+      toast.success('Schedule assigned and shifts generated');
       queryClient.invalidateQueries({ queryKey: ['employeeScheduleAssignments'] });
+      queryClient.invalidateQueries({ queryKey: ['scheduledShifts'] });
       setShowDialog(false);
       setFormData({
         template_id: '',
@@ -53,6 +60,30 @@ export default function EmployeeScheduleHistory({
         effective_end_date: '',
         notes: '',
       });
+    },
+  });
+
+  const unassignMutation = useMutation({
+    mutationFn: async (assignmentId) => {
+      // End the assignment
+      await base44.entities.EmployeeScheduleAssignment.update(assignmentId, {
+        effective_end_date: format(new Date(), 'yyyy-MM-dd'),
+      });
+
+      // Delete future draft shifts from this assignment
+      const shifts = await base44.entities.ScheduledShift.filter({
+        template_assignment_id: assignmentId,
+        status: 'draft'
+      });
+
+      for (const shift of shifts) {
+        await base44.entities.ScheduledShift.delete(shift.id);
+      }
+    },
+    onSuccess: () => {
+      toast.success('Schedule unassigned');
+      queryClient.invalidateQueries({ queryKey: ['employeeScheduleAssignments'] });
+      queryClient.invalidateQueries({ queryKey: ['scheduledShifts'] });
     },
   });
 
@@ -84,8 +115,19 @@ export default function EmployeeScheduleHistory({
             <div className="text-lg font-semibold text-slate-800 mb-1">
               {getTemplateName(currentAssignment.template_id)}
             </div>
-            <div className="text-xs text-slate-600">
-              Since {format(new Date(currentAssignment.effective_start_date), 'MMM d, yyyy')}
+            <div className="flex items-center justify-between">
+              <div className="text-xs text-slate-600">
+                Since {format(new Date(currentAssignment.effective_start_date), 'MMM d, yyyy')}
+              </div>
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                onClick={() => unassignMutation.mutate(currentAssignment.id)}
+                className="text-red-600 hover:text-red-700"
+              >
+                <Trash2 className="w-3 h-3 mr-1" />
+                Unassign
+              </Button>
             </div>
             {currentAssignment.notes && (
               <div className="text-sm text-slate-600 mt-2 pt-2 border-t border-blue-200">
