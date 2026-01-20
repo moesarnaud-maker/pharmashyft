@@ -94,13 +94,23 @@ export default function EmployeeDetailsTab({ employee, user, teams, schedules, o
       return;
     }
 
-    await saveLocationsMutation.mutateAsync();
-    
-    onUpdate({
-      user_id: user.id,
-      employee_id: employee?.id,
-      ...formData,
-    });
+    if (eligibleLocationIds.length === 0) {
+      toast.error('Select at least one eligible location');
+      return;
+    }
+
+    try {
+      await saveLocationsMutation.mutateAsync();
+      
+      onUpdate({
+        user_id: user.id,
+        employee_id: employee?.id,
+        ...formData,
+      });
+    } catch (error) {
+      toast.error('Failed to save locations');
+      console.error(error);
+    }
   };
 
   return (
