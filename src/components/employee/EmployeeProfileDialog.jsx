@@ -6,6 +6,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { User, Calendar, Clock, FileText, Briefcase } from 'lucide-react';
 import EmployeeDetailsTab from './EmployeeDetailsTab';
 import EmployeeScheduleTab from './EmployeeScheduleTab';
+import EmployeeAvailabilityTab from './EmployeeAvailabilityTab';
 import EmployeeTimeEntriesTab from './EmployeeTimeEntriesTab';
 import EmployeeTimesheetsTab from './EmployeeTimesheetsTab';
 import EmployeeAbsencesTab from './EmployeeAbsencesTab';
@@ -87,6 +88,10 @@ export default function EmployeeProfileDialog({
               <Calendar className="w-4 h-4" />
               Schedule
             </TabsTrigger>
+            <TabsTrigger value="availability" className="gap-2">
+              <Clock className="w-4 h-4" />
+              Availability
+            </TabsTrigger>
             <TabsTrigger value="timeentries" className="gap-2">
               <Clock className="w-4 h-4" />
               Time Entries
@@ -120,6 +125,10 @@ export default function EmployeeProfileDialog({
                 weeks={scheduleWeeks}
                 days={scheduleDays}
               />
+            </TabsContent>
+
+            <TabsContent value="availability" className="mt-0">
+              <EmployeeAvailabilityTab employee={employee} />
             </TabsContent>
 
             <TabsContent value="timeentries" className="mt-0">
