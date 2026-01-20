@@ -247,6 +247,10 @@ export default function AdminDashboard() {
             />
           </TabsContent>
 
+          <TabsContent value="schedules">
+            <ScheduleManagement />
+          </TabsContent>
+
           <TabsContent value="settings">
             <SettingsPanel
               settings={settings}

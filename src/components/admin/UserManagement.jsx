@@ -7,9 +7,12 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { UserPlus, Search, MoreHorizontal, Mail, Shield, Users } from 'lucide-react';
+import { UserPlus, Search, MoreHorizontal, Mail, Shield, Users, Calendar } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { format } from 'date-fns';
+import { useQuery } from '@tanstack/react-query';
+import { base44 } from '@/api/base44Client';
+import EmployeeScheduleHistory from '@/components/schedule/EmployeeScheduleHistory';
 
 export default function UserManagement({ 
   users = [], 
@@ -25,6 +28,17 @@ export default function UserManagement({
   const [inviteForm, setInviteForm] = useState({ email: '', role: 'user' });
   const [employeeForm, setEmployeeForm] = useState({});
   const [showEmployeeDialog, setShowEmployeeDialog] = useState(false);
+  const [selectedEmployee, setSelectedEmployee] = useState(null);
+
+  const { data: scheduleTemplates = [] } = useQuery({
+    queryKey: ['scheduleTemplates'],
+    queryFn: () => base44.entities.ScheduleTemplate.list(),
+  });
+
+  const { data: scheduleAssignments = [] } = useQuery({
+    queryKey: ['employeeScheduleAssignments'],
+    queryFn: () => base44.entities.EmployeeScheduleAssignment.list(),
+  });
 
   const getEmployeeForUser = (userId) => employees.find(e => e.user_id === userId);
   const getTeamName = (teamId) => teams.find(t => t.id === teamId)?.name || '-';
@@ -52,6 +66,7 @@ export default function UserManagement({
       contract_hours_week: emp?.contract_hours_week || 38,
       vacation_days_total: emp?.vacation_days_total || 20
     });
+    setSelectedEmployee(emp);
     setShowEmployeeDialog(true);
   };
 
@@ -192,10 +207,19 @@ export default function UserManagement({
 
       {/* Employee Details Dialog */}
       <Dialog open={showEmployeeDialog} onOpenChange={setShowEmployeeDialog}>
-        <DialogContent>
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Edit Employee: {employeeForm.user_name}</DialogTitle>
           </DialogHeader>
+
+          {selectedEmployee && (
+            <EmployeeScheduleHistory
+              employeeId={selectedEmployee.id}
+              assignments={scheduleAssignments.filter(a => a.employee_id === selectedEmployee.id)}
+              templates={scheduleTemplates}
+            />
+          )}
+
           <div className="space-y-4 py-4">
             <div className="space-y-2">
               <Label>Employee Number</Label>
