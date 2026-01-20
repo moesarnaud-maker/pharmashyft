@@ -3,7 +3,7 @@ import { base44 } from '@/api/base44Client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
-import { Users, Settings, FileText, Building, Download, Shield, BarChart2 } from 'lucide-react';
+import { Users, Settings, FileText, Building, Download, Shield, BarChart2, Calendar } from 'lucide-react';
 
 import StatsCard from '@/components/common/StatsCard';
 import UserManagement from '@/components/admin/UserManagement';
@@ -12,6 +12,7 @@ import SettingsPanel from '@/components/admin/SettingsPanel';
 import AuditLogViewer from '@/components/admin/AuditLogViewer';
 import ExportPanel from '@/components/reports/ExportPanel';
 import ReportsPanel from '@/components/reports/ReportsPanel';
+import ScheduleManagement from '@/components/schedule/ScheduleManagement';
 
 export default function AdminDashboard() {
   const [user, setUser] = useState(null);
@@ -200,6 +201,10 @@ export default function AdminDashboard() {
             <TabsTrigger value="teams" className="gap-2">
               <Building className="w-4 h-4" />
               Teams
+            </TabsTrigger>
+            <TabsTrigger value="schedules" className="gap-2">
+              <Calendar className="w-4 h-4" />
+              Schedules
             </TabsTrigger>
             <TabsTrigger value="settings" className="gap-2">
               <Settings className="w-4 h-4" />
