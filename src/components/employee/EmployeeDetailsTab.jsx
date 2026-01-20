@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -19,9 +19,13 @@ export default function EmployeeDetailsTab({ employee, user, teams, schedules, o
   });
 
   const { data: employeeLocations = [] } = useQuery({
-    queryKey: ['employeeLocations'],
-    queryFn: () => base44.entities.EmployeeLocation.list(),
+    queryKey: ['employeeLocations', employee?.id],
+    queryFn: () => base44.entities.EmployeeLocation.filter({ 
+      employee_id: employee.id 
+    }),
+    enabled: !!employee?.id,
   });
+
   const [formData, setFormData] = useState({
     employee_number: employee?.employee_number || '',
     team_id: employee?.team_id || '',
@@ -32,11 +36,32 @@ export default function EmployeeDetailsTab({ employee, user, teams, schedules, o
     pin_code: employee?.pin_code || '',
   });
 
-  const [eligibleLocationIds, setEligibleLocationIds] = useState(
-    employeeLocations
-      .filter(el => el.employee_id === employee?.id)
-      .map(el => el.location_id)
-  );
+  const [eligibleLocationIds, setEligibleLocationIds] = useState([]);
+
+  // ✅ FIX: Update state when employeeLocations data loads
+  useEffect(() => {
+    if (employeeLocations.length > 0) {
+      const locationIds = employeeLocations
+        .filter(el => el.employee_id === employee?.id)
+        .map(el => el.location_id);
+      setEligibleLocationIds(locationIds);
+    }
+  }, [employeeLocations, employee?.id]);
+
+  // ✅ FIX: Update formData when employee prop changes
+  useEffect(() => {
+    if (employee) {
+      setFormData({
+        employee_number: employee.employee_number || '',
+        team_id: employee.team_id || '',
+        main_location_id: employee.main_location_id || '',
+        schedule_id: employee.schedule_id || '',
+        contract_hours_week: employee.contract_hours_week || 38,
+        vacation_days_total: employee.vacation_days_total || 20,
+        pin_code: employee.pin_code || '',
+      });
+    }
+  }, [employee]);
 
   const toggleLocation = (locationId) => {
     setEligibleLocationIds(prev =>
@@ -46,39 +71,55 @@ export default function EmployeeDetailsTab({ employee, user, teams, schedules, o
     );
   };
 
-  const saveLocationsMutation = useMutation({
+  // ✅ FIX: Combine Employee update + EmployeeLocations in single mutation
+  const saveMutation = useMutation({
     mutationFn: async () => {
       if (!employee?.id) {
         throw new Error('Employee ID is required');
       }
 
-      // Fetch fresh data to avoid stale references
+      // Validation
+      if (!formData.main_location_id) {
+        throw new Error('Main location is required');
+      }
+
+      // Ensure main location is in eligible locations
+      const finalEligibleIds = eligibleLocationIds.includes(formData.main_location_id)
+        ? eligibleLocationIds
+        : [...eligibleLocationIds, formData.main_location_id];
+
+      if (finalEligibleIds.length === 0) {
+        throw new Error('At least one eligible location is required');
+      }
+
+      // 1. Update Employee record (including main_location_id)
+      await base44.entities.Employee.update(employee.id, {
+        employee_number: formData.employee_number,
+        team_id: formData.team_id,
+        main_location_id: formData.main_location_id, // ✅ Critical: Save main location
+        schedule_id: formData.schedule_id,
+        contract_hours_week: formData.contract_hours_week,
+        vacation_days_total: formData.vacation_days_total,
+        pin_code: formData.pin_code,
+      });
+
+      // 2. Fetch current EmployeeLocation records
       const currentEmployeeLocations = await base44.entities.EmployeeLocation.filter({ 
         employee_id: employee.id 
       });
       
       const currentLocationIds = currentEmployeeLocations.map(el => el.location_id);
       
-      // Ensure main location is included in eligible locations
-      const finalEligibleIds = eligibleLocationIds.includes(formData.main_location_id)
-        ? eligibleLocationIds
-        : [...eligibleLocationIds, formData.main_location_id];
-      
-      // Remove locations that are no longer eligible
+      // 3. Delete removed locations
       const toRemove = currentEmployeeLocations.filter(el => 
         !finalEligibleIds.includes(el.location_id)
       );
       
       for (const el of toRemove) {
-        try {
-          await base44.entities.EmployeeLocation.delete(el.id);
-        } catch (error) {
-          // Ignore if already deleted
-          console.log('Location already removed:', el.id);
-        }
+        await base44.entities.EmployeeLocation.delete(el.id);
       }
 
-      // Add new eligible locations
+      // 4. Add new eligible locations
       const toAdd = finalEligibleIds.filter(locId => 
         !currentLocationIds.includes(locId)
       );
@@ -90,49 +131,47 @@ export default function EmployeeDetailsTab({ employee, user, teams, schedules, o
           assigned_date: new Date().toISOString().split('T')[0],
         });
       }
+
+      return { finalEligibleIds };
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['employeeLocations'] });
+    onSuccess: (data) => {
+      // ✅ Invalidate queries to refetch fresh data
+      queryClient.invalidateQueries({ queryKey: ['employees'] });
+      queryClient.invalidateQueries({ queryKey: ['employeeLocations', employee.id] });
+      
+      // Update local state to match saved data
+      setEligibleLocationIds(data.finalEligibleIds);
+      
+      toast.success('Employee profile saved successfully');
+      
+      // Call parent onUpdate if needed
+      if (onUpdate) {
+        onUpdate({
+          user_id: user.id,
+          employee_id: employee.id,
+          ...formData,
+        });
+      }
+    },
+    onError: (error) => {
+      toast.error(error.message || 'Failed to save employee profile');
+      console.error('Save error:', error);
     },
   });
 
-  const handleSave = async () => {
+  const handleSave = () => {
     // Validation
     if (!formData.main_location_id) {
       toast.error('Main location is required');
       return;
     }
 
-    if (eligibleLocationIds.length === 0) {
+    if (eligibleLocationIds.length === 0 && !formData.main_location_id) {
       toast.error('Select at least one eligible location');
       return;
     }
 
-    // Auto-add main location to eligible if not already included
-    const finalEligibleIds = eligibleLocationIds.includes(formData.main_location_id)
-      ? eligibleLocationIds
-      : [...eligibleLocationIds, formData.main_location_id];
-
-    if (finalEligibleIds.length !== eligibleLocationIds.length) {
-      setEligibleLocationIds(finalEligibleIds);
-    }
-
-    try {
-      // Save locations first
-      await saveLocationsMutation.mutateAsync();
-      
-      // Then save employee details
-      await onUpdate({
-        user_id: user.id,
-        employee_id: employee?.id,
-        ...formData,
-      });
-
-      toast.success('Employee profile saved successfully');
-    } catch (error) {
-      toast.error('Failed to save employee profile');
-      console.error(error);
-    }
+    saveMutation.mutate();
   };
 
   return (
@@ -218,7 +257,9 @@ export default function EmployeeDetailsTab({ employee, user, teams, schedules, o
               </div>
             </Card>
             {formData.main_location_id && !eligibleLocationIds.includes(formData.main_location_id) && (
-              <p className="text-sm text-red-600 mt-1">Main location must be included in eligible locations</p>
+              <p className="text-sm text-amber-600 mt-1">
+                ⚠️ Main location will be automatically added to eligible locations
+              </p>
             )}
           </div>
 
@@ -258,9 +299,13 @@ export default function EmployeeDetailsTab({ employee, user, teams, schedules, o
             </div>
           </div>
 
-          <Button onClick={handleSave} className="w-full">
+          <Button 
+            onClick={handleSave} 
+            className="w-full"
+            disabled={saveMutation.isPending}
+          >
             <Save className="w-4 h-4 mr-2" />
-            Save Changes
+            {saveMutation.isPending ? 'Saving...' : 'Save Changes'}
           </Button>
         </CardContent>
       </Card>
