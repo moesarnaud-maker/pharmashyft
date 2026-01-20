@@ -3,7 +3,7 @@ import { base44 } from '@/api/base44Client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
-import { Users, Settings, FileText, Building, Download, Shield, BarChart2, Calendar } from 'lucide-react';
+import { Users, Settings, FileText, Building, Download, Shield, BarChart2, Calendar, MapPin } from 'lucide-react';
 
 import StatsCard from '@/components/common/StatsCard';
 import UserManagement from '@/components/admin/UserManagement';
@@ -13,6 +13,7 @@ import AuditLogViewer from '@/components/admin/AuditLogViewer';
 import ExportPanel from '@/components/reports/ExportPanel';
 import ReportsPanel from '@/components/reports/ReportsPanel';
 import ScheduleManagement from '@/components/schedule/ScheduleManagement';
+import LocationManagement from '@/components/admin/LocationManagement';
 
 export default function AdminDashboard() {
   const [user, setUser] = useState(null);
@@ -44,6 +45,11 @@ export default function AdminDashboard() {
   const { data: schedules = [] } = useQuery({
     queryKey: ['schedules'],
     queryFn: () => base44.entities.Schedule.list(),
+  });
+
+  const { data: locations = [] } = useQuery({
+    queryKey: ['locations'],
+    queryFn: () => base44.entities.Location.list(),
   });
 
   const { data: settings = [] } = useQuery({
@@ -206,6 +212,10 @@ export default function AdminDashboard() {
               <Calendar className="w-4 h-4" />
               Schedules
             </TabsTrigger>
+            <TabsTrigger value="locations" className="gap-2">
+              <MapPin className="w-4 h-4" />
+              Locations
+            </TabsTrigger>
             <TabsTrigger value="settings" className="gap-2">
               <Settings className="w-4 h-4" />
               Settings
@@ -249,6 +259,10 @@ export default function AdminDashboard() {
 
           <TabsContent value="schedules">
             <ScheduleManagement />
+          </TabsContent>
+
+          <TabsContent value="locations">
+            <LocationManagement locations={locations} />
           </TabsContent>
 
           <TabsContent value="settings">

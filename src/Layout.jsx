@@ -10,7 +10,7 @@ import {
   DropdownMenuSeparator, 
   DropdownMenuTrigger 
 } from "@/components/ui/dropdown-menu";
-import { Clock, User, LogOut, Menu, Home, Settings, Users, ChevronDown } from 'lucide-react';
+import { Clock, User, LogOut, Menu, Home, Settings, Users, ChevronDown, Calendar } from 'lucide-react';
 
 export default function Layout({ children, currentPageName }) {
   const [user, setUser] = useState(null);
@@ -61,6 +61,12 @@ export default function Layout({ children, currentPageName }) {
                   <Button variant="ghost" size="sm" className={currentPageName === 'EmployeeDashboard' ? 'bg-slate-100' : ''}>
                     <Clock className="w-4 h-4 mr-2" />
                     Time Clock
+                  </Button>
+                </Link>
+                <Link to={createPageUrl('ScheduleCalendar')}>
+                  <Button variant="ghost" size="sm" className={currentPageName === 'ScheduleCalendar' ? 'bg-slate-100' : ''}>
+                    <Calendar className="w-4 h-4 mr-2" />
+                    Calendar
                   </Button>
                 </Link>
                 {isAdmin && (
@@ -132,6 +138,12 @@ export default function Layout({ children, currentPageName }) {
                     <Button variant="ghost" className="w-full justify-start">
                       <Clock className="w-4 h-4 mr-2" />
                       Time Clock
+                    </Button>
+                  </Link>
+                  <Link to={createPageUrl('ScheduleCalendar')} onClick={() => setMobileMenuOpen(false)}>
+                    <Button variant="ghost" className="w-full justify-start">
+                      <Calendar className="w-4 h-4 mr-2" />
+                      Calendar
                     </Button>
                   </Link>
                   {isAdmin && (
