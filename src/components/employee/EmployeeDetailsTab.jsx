@@ -53,13 +53,28 @@ export default function EmployeeDetailsTab({ employee, user, teams, schedules, o
         employee_id: employee.id 
       });
       
-      // Remove existing eligibilities
-      for (const el of currentEmployeeLocations) {
-        await base44.entities.EmployeeLocation.delete(el.id);
+      const currentLocationIds = currentEmployeeLocations.map(el => el.location_id);
+      
+      // Remove locations that are no longer eligible
+      const toRemove = currentEmployeeLocations.filter(el => 
+        !eligibleLocationIds.includes(el.location_id)
+      );
+      
+      for (const el of toRemove) {
+        try {
+          await base44.entities.EmployeeLocation.delete(el.id);
+        } catch (error) {
+          // Ignore if already deleted
+          console.log('Location already removed:', el.id);
+        }
       }
 
-      // Add new eligibilities
-      for (const locId of eligibleLocationIds) {
+      // Add new eligible locations
+      const toAdd = eligibleLocationIds.filter(locId => 
+        !currentLocationIds.includes(locId)
+      );
+      
+      for (const locId of toAdd) {
         await base44.entities.EmployeeLocation.create({
           employee_id: employee.id,
           location_id: locId,
