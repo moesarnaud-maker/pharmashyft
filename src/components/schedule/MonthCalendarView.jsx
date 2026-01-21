@@ -47,7 +47,11 @@ export default function MonthCalendarView({
   const getEmployeeName = (empId) => {
     const emp = employees.find(e => e.id === empId);
     const user = users.find(u => u.id === emp?.user_id);
-    return user?.full_name || 'Unknown';
+    const fullName = user?.full_name || 'Unknown';
+    // Capitalize each word
+    return fullName.split(' ').map(word => 
+      word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
+    ).join(' ');
   };
 
   const getLocationName = (locId) => locations.find(l => l.id === locId)?.name || '';
@@ -222,7 +226,7 @@ export default function MonthCalendarView({
                       if (shift.absence) {
                         return (
                           <div key={idx} className={`text-xs p-1 rounded ${absenceColors[shift.absence.absence_type]}`}>
-                            {name.split(' ')[0]} - {shift.absence.absence_type}
+                            {name} - {shift.absence.absence_type}
                           </div>
                         );
                       }
@@ -238,7 +242,7 @@ export default function MonthCalendarView({
                           }`}
                         >
                           <div className={`font-medium ${shift.status === 'draft' ? 'text-amber-900' : 'text-emerald-900'}`}>
-                            {name.split(' ')[0]}
+                            {name}
                           </div>
                           <div className={shift.status === 'draft' ? 'text-amber-700' : 'text-emerald-700'}>
                             {shift.start_time}–{shift.end_time}
