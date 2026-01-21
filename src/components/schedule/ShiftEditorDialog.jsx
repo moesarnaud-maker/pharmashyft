@@ -52,10 +52,33 @@ export default function ShiftEditorDialog({
     }
   }, [shift]);
 
-  // Filter employees eligible for selected location
+  useEffect(() => {
+    console.log('ShiftEditorDialog opened with:', {
+      defaultLocationId,
+      formData_location_id: formData.location_id,
+      employees: employees.length,
+      employeeLocations: employeeLocations.length,
+      eligibleEmployees: eligibleEmployees.length
+    });
+  }, [open]);
+
+  useEffect(() => {
+    if (formData.location_id) {
+      console.log('Location selected:', formData.location_id);
+      console.log('Employee-Location mappings for this location:', 
+        employeeLocations.filter(el => String(el.location_id) === String(formData.location_id))
+      );
+      console.log('Eligible employees result:', eligibleEmployees);
+    }
+  }, [formData.location_id]);
+
+  // Filter employees eligible for selected location (with type safety)
   const eligibleEmployees = formData.location_id
     ? employees.filter(emp =>
-        employeeLocations.some(el => el.employee_id === emp.id && el.location_id === formData.location_id)
+        employeeLocations.some(el => 
+          String(el.employee_id) === String(emp.id) && 
+          String(el.location_id) === String(formData.location_id)
+        )
       )
     : employees;
 
