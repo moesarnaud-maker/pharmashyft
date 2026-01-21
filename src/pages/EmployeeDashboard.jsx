@@ -235,10 +235,7 @@ export default function EmployeeDashboard() {
             </TabsTrigger>
             <TabsTrigger value="profile" className="gap-2">
               <User className="w-4 h-4" />
-              My Profile
-            </TabsTrigger>
-            <TabsTrigger value="test" className="gap-2">
-              TEST TAB
+              My Profile TEST
             </TabsTrigger>
           </TabsList>
 
