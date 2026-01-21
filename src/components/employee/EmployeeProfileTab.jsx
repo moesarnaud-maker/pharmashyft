@@ -22,6 +22,8 @@ export default function EmployeeProfileTab({ employee, user, currentUser }) {
   });
 
   useEffect(() => {
+    console.log('User data:', user);
+    console.log('Employee data:', employee);
     if (user && employee) {
       setFormData({
         first_name: user.first_name || '',
