@@ -220,6 +220,9 @@ export default function EmployeeDashboard() {
               <User className="w-4 h-4" />
               My Profile
             </TabsTrigger>
+            <TabsTrigger value="test" className="gap-2">
+              TEST TAB
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="clock" className="space-y-6">
@@ -336,6 +339,10 @@ export default function EmployeeDashboard() {
                 </div>
               </div>
             )}
+          </TabsContent>
+
+          <TabsContent value="test">
+            <div>TEST CONTENT - Can you see this?</div>
           </TabsContent>
         </Tabs>
       </div>
