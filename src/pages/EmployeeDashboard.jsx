@@ -223,11 +223,6 @@ export default function EmployeeDashboard() {
           <p className="text-slate-500 mt-1">{format(new Date(), 'EEEE, MMMM d, yyyy')}</p>
         </div>
 
-        {/* ADD THIS TEST */}
-        <div className="bg-red-500 text-white p-8 text-center text-2xl font-bold mb-4">
-          TEST - CAN YOU SEE THIS RED BOX? IF YES, THE CODE IS UPDATING
-        </div>
-
         <div className="space-y-6">
           {console.log('Rendering tabs, user:', user, 'employee:', employee)}
           <div className="flex gap-2 mb-6 p-2 bg-white rounded-lg shadow-sm border flex-wrap">
