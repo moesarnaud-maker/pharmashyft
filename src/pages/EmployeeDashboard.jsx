@@ -12,7 +12,7 @@ import TodaySummary from '@/components/clock/TodaySummary';
 import WeeklyTimesheet from '@/components/timesheet/WeeklyTimesheet';
 import AbsenceRequestForm from '@/components/absence/AbsenceRequestForm';
 import CorrectionRequestForm from '@/components/correction/CorrectionRequestForm';
-import MyProfileTab from '@/components/employee/MyProfileTab';
+import EmployeeProfileTab from '@/components/employee/EmployeeProfileTab';
 
 export default function EmployeeDashboard() {
   const [user, setUser] = useState(null);
@@ -326,7 +326,7 @@ export default function EmployeeDashboard() {
           </TabsContent>
 
           <TabsContent value="profile">
-            <MyProfileTab user={user} onUpdate={setUser} />
+            <EmployeeProfileTab employee={employee} user={user} currentUser={user} />
           </TabsContent>
         </Tabs>
       </div>
