@@ -15,6 +15,8 @@ import CorrectionRequestForm from '@/components/correction/CorrectionRequestForm
 // import EmployeeProfileTab from '@/components/employee/EmployeeProfileTab';
 
 export default function EmployeeDashboard() {
+  console.log('=== EmployeeDashboard STARTED ===');
+  
   const [user, setUser] = useState(null);
   const [employee, setEmployee] = useState(null);
   const [weekOffset, setWeekOffset] = useState(0);
@@ -207,6 +209,8 @@ export default function EmployeeDashboard() {
       <p>Loading employee data...</p>
     </div>;
   }
+
+  console.log('=== ABOUT TO RENDER, user:', user, 'employee:', employee);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
