@@ -30,7 +30,7 @@ export default function EmployeeProfileDialog({
   const { data: scheduleAssignments = [] } = useQuery({
     queryKey: ['employeeScheduleAssignments'],
     queryFn: () => base44.entities.EmployeeScheduleAssignment.list(),
-    enabled: !!employee,
+    enabled: !!employee?.id,
   });
 
   const { data: scheduleWeeks = [] } = useQuery({
@@ -46,19 +46,19 @@ export default function EmployeeProfileDialog({
   const { data: timeEntries = [] } = useQuery({
     queryKey: ['timeEntries', employee?.id],
     queryFn: () => base44.entities.TimeEntry.filter({ employee_id: employee.id }),
-    enabled: !!employee,
+    enabled: !!employee?.id,
   });
 
   const { data: timesheets = [] } = useQuery({
     queryKey: ['timesheets', employee?.id],
     queryFn: () => base44.entities.Timesheet.filter({ employee_id: employee.id }),
-    enabled: !!employee,
+    enabled: !!employee?.id,
   });
 
   const { data: absenceRequests = [] } = useQuery({
     queryKey: ['absenceRequests', employee?.id],
     queryFn: () => base44.entities.AbsenceRequest.filter({ employee_id: employee.id }),
-    enabled: !!employee,
+    enabled: !!employee?.id,
   });
 
   if (!user) return null;
