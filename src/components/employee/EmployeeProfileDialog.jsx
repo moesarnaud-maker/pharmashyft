@@ -61,7 +61,7 @@ export default function EmployeeProfileDialog({
     enabled: !!employee,
   });
 
-  if (!employee || !user) return null;
+  if (!user) return null;
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
