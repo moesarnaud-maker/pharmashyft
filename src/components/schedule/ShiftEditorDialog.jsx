@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
-import { Trash2, AlertTriangle, CheckCircle } from 'lucide-react';
+import { Trash2, AlertTriangle, CheckCircle, XCircle } from 'lucide-react';
 
 export default function ShiftEditorDialog({ 
   open, 
@@ -39,6 +39,12 @@ export default function ShiftEditorDialog({
     enabled: open,
   });
 
+  const { data: scheduledShifts = [] } = useQuery({
+    queryKey: ['scheduledShifts'],
+    queryFn: () => base44.entities.ScheduledShift.list(),
+    enabled: open,
+  });
+
   useEffect(() => {
     if (shift) {
       setFormData({
@@ -53,26 +59,6 @@ export default function ShiftEditorDialog({
     }
   }, [shift]);
 
-  useEffect(() => {
-    console.log('ShiftEditorDialog opened with:', {
-      defaultLocationId,
-      formData_location_id: formData.location_id,
-      employees: employees.length,
-      employeeLocations: employeeLocations.length,
-      eligibleEmployees: eligibleEmployees.length
-    });
-  }, [open]);
-
-  useEffect(() => {
-    if (formData.location_id) {
-      console.log('Location selected:', formData.location_id);
-      console.log('Employee-Location mappings for this location:', 
-        employeeLocations.filter(el => String(el.location_id) === String(formData.location_id))
-      );
-      console.log('Eligible employees result:', eligibleEmployees);
-    }
-  }, [formData.location_id]);
-
   // Filter employees eligible for selected location (with type safety)
   const eligibleEmployees = formData.location_id
     ? employees.filter(emp =>
@@ -82,6 +68,54 @@ export default function ShiftEditorDialog({
         )
       )
     : employees;
+
+  // Check for overlapping shifts
+  const checkOverlap = () => {
+    if (!formData.employee_id || !date || !formData.start_time || !formData.end_time) {
+      return null;
+    }
+
+    // Find all shifts for this employee on this date (excluding the current shift being edited)
+    const employeeShiftsOnDate = scheduledShifts.filter(s => 
+      s.date === date && 
+      s.employee_id === formData.employee_id &&
+      s.id !== shift?.id // Exclude current shift if editing
+    );
+
+    if (employeeShiftsOnDate.length === 0) {
+      return null;
+    }
+
+    // Convert times to minutes for easier comparison
+    const timeToMinutes = (time) => {
+      const [hours, minutes] = time.split(':').map(Number);
+      return hours * 60 + minutes;
+    };
+
+    const newStart = timeToMinutes(formData.start_time);
+    const newEnd = timeToMinutes(formData.end_time);
+
+    // Check each existing shift for overlap
+    for (const existingShift of employeeShiftsOnDate) {
+      const existingStart = timeToMinutes(existingShift.start_time);
+      const existingEnd = timeToMinutes(existingShift.end_time);
+
+      // Check if times overlap
+      // Overlap occurs if: new shift starts before existing ends AND new shift ends after existing starts
+      const hasOverlap = newStart < existingEnd && newEnd > existingStart;
+
+      if (hasOverlap) {
+        const empName = users.find(u => u.id === employees.find(e => e.id === formData.employee_id)?.user_id)?.full_name || 'Employee';
+        return {
+          type: 'overlap',
+          message: `${empName} already has a shift from ${existingShift.start_time} to ${existingShift.end_time} on this date`,
+          conflictingShift: existingShift
+        };
+      }
+    }
+
+    return null;
+  };
 
   // Check availability conflicts
   const checkAvailability = () => {
@@ -131,6 +165,7 @@ export default function ShiftEditorDialog({
   };
 
   const availabilityStatus = checkAvailability();
+  const overlapStatus = checkOverlap();
 
   const saveMutation = useMutation({
     mutationFn: async () => {
@@ -187,6 +222,9 @@ export default function ShiftEditorDialog({
       onClose();
     },
   });
+
+  // Determine if save button should be disabled
+  const isSaveDisabled = !formData.employee_id || !formData.location_id || !!overlapStatus;
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
@@ -276,8 +314,6 @@ export default function ShiftEditorDialog({
             </div>
           </div>
 
-
-
           <div>
             <Label>Notes</Label>
             <Textarea
@@ -287,8 +323,25 @@ export default function ShiftEditorDialog({
             />
           </div>
 
+          {/* Overlap Warning - CRITICAL */}
+          {overlapStatus && (
+            <div className="p-3 rounded-lg border bg-red-50 border-red-300">
+              <div className="flex items-start gap-2">
+                <XCircle className="w-5 h-5 text-red-600 mt-0.5 flex-shrink-0" />
+                <div className="flex-1">
+                  <div className="font-semibold text-sm text-red-900">
+                    Schedule Conflict - Cannot Save
+                  </div>
+                  <div className="text-sm text-red-700 mt-0.5">
+                    {overlapStatus.message}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Availability Status */}
-          {availabilityStatus && (
+          {!overlapStatus && availabilityStatus && (
             <div className={`p-3 rounded-lg border ${
               availabilityStatus.type === 'available' ? 'bg-green-50 border-green-200' :
               availabilityStatus.type === 'note' ? 'bg-blue-50 border-blue-200' :
@@ -334,7 +387,7 @@ export default function ShiftEditorDialog({
             <Button variant="outline" onClick={onClose}>Cancel</Button>
             <Button 
               onClick={() => saveMutation.mutate()} 
-              disabled={!formData.employee_id || !formData.location_id}
+              disabled={isSaveDisabled}
             >
               Save as Draft
             </Button>
