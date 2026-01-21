@@ -192,6 +192,22 @@ export default function EmployeeDashboard() {
     },
   });
 
+  console.log('User:', user);
+  console.log('Employee:', employee);
+  console.log('Employees array:', employees);
+
+  if (!user) {
+    return <div className="min-h-screen flex items-center justify-center">
+      <p>Loading user data...</p>
+    </div>;
+  }
+
+  if (!employee) {
+    return <div className="min-h-screen flex items-center justify-center">
+      <p>Loading employee data...</p>
+    </div>;
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
       <div className="max-w-6xl mx-auto px-4 py-8">
