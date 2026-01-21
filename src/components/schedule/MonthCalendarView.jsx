@@ -274,6 +274,7 @@ export default function MonthCalendarView({
             shift={selectedShift}
             date={editDate || (selectedShift?.date)}
             employees={employees}
+            users={users}
             locations={locations}
             employeeLocations={employeeLocations}
             currentUser={currentUser}

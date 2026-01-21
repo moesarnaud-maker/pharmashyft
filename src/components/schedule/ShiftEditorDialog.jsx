@@ -16,6 +16,7 @@ export default function ShiftEditorDialog({
   shift = null, 
   date,
   employees = [],
+  users = [],
   locations = [],
   employeeLocations = [],
   currentUser,
@@ -225,7 +226,9 @@ export default function ShiftEditorDialog({
               </SelectTrigger>
               <SelectContent>
                 {eligibleEmployees.filter(e => e.status === 'active').map(emp => (
-                  <SelectItem key={emp.id} value={emp.id}>{emp.employee_number}</SelectItem>
+                  <SelectItem key={emp.id} value={emp.id}>
+                    {users.find(u => u.id === emp.user_id)?.full_name || emp.employee_number || 'Unknown'}
+                  </SelectItem>
                 ))}
               </SelectContent>
             </Select>
