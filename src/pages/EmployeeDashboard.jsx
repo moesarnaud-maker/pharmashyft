@@ -342,7 +342,7 @@ export default function EmployeeDashboard() {
             </div>
           </TabsContent>
 
-          <TabsContent value="profile">
+          {/* <TabsContent value="profile">
             {employee && user ? (
               <EmployeeProfileTab employee={employee} user={user} currentUser={user} />
             ) : (
@@ -353,7 +353,7 @@ export default function EmployeeDashboard() {
                 </div>
               </div>
             )}
-          </TabsContent>
+          </TabsContent> */}
 
           <TabsContent value="test">
             <div>TEST CONTENT - Can you see this?</div>
