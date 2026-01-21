@@ -224,7 +224,7 @@ export default function EmployeeDashboard() {
 
         <Tabs defaultValue="clock" className="space-y-6">
           {console.log('Rendering tabs, user:', user, 'employee:', employee)}
-          <TabsList className="bg-white shadow-sm border">
+          <TabsList className="bg-white shadow-sm border w-full grid grid-cols-4">
             <TabsTrigger value="clock" className="gap-2">
               <Clock className="w-4 h-4" />
               Time Clock
