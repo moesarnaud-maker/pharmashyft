@@ -22,6 +22,7 @@ export default function EmployeeDashboard() {
   const [weekOffset, setWeekOffset] = useState(0);
   const [showAbsenceForm, setShowAbsenceForm] = useState(false);
   const [showCorrectionForm, setShowCorrectionForm] = useState(false);
+  const [activeTab, setActiveTab] = useState('clock');
   const queryClient = useQueryClient();
 
   const weekStart = startOfWeek(addWeeks(new Date(), weekOffset), { weekStartsOn: 1 });
@@ -222,28 +223,44 @@ export default function EmployeeDashboard() {
           <p className="text-slate-500 mt-1">{format(new Date(), 'EEEE, MMMM d, yyyy')}</p>
         </div>
 
-        <Tabs defaultValue="clock" className="space-y-6">
+        <div className="space-y-6">
           {console.log('Rendering tabs, user:', user, 'employee:', employee)}
-          <TabsList className="bg-white shadow-sm border flex flex-wrap">
-            <TabsTrigger value="clock" className="gap-2">
+          <div className="flex gap-2 mb-6 p-2 bg-white rounded-lg shadow-sm border flex-wrap">
+            <Button 
+              variant={activeTab === 'clock' ? 'default' : 'ghost'}
+              onClick={() => setActiveTab('clock')}
+              className="gap-2"
+            >
               <Clock className="w-4 h-4" />
               Time Clock
-            </TabsTrigger>
-            <TabsTrigger value="timesheet" className="gap-2">
+            </Button>
+            <Button 
+              variant={activeTab === 'timesheet' ? 'default' : 'ghost'}
+              onClick={() => setActiveTab('timesheet')}
+              className="gap-2"
+            >
               <Calendar className="w-4 h-4" />
               Timesheet
-            </TabsTrigger>
-            <TabsTrigger value="requests" className="gap-2">
+            </Button>
+            <Button 
+              variant={activeTab === 'requests' ? 'default' : 'ghost'}
+              onClick={() => setActiveTab('requests')}
+              className="gap-2"
+            >
               <FileText className="w-4 h-4" />
               Requests
-            </TabsTrigger>
-            <TabsTrigger value="profile" className="gap-2">
+            </Button>
+            <Button 
+              variant={activeTab === 'profile' ? 'default' : 'ghost'}
+              onClick={() => setActiveTab('profile')}
+              className="gap-2"
+            >
               <User className="w-4 h-4" />
-              My Profile TEST
-            </TabsTrigger>
-          </TabsList>
+              My Profile
+            </Button>
+          </div>
 
-          <TabsContent value="clock" className="space-y-6">
+          {activeTab === 'clock' && <div className="space-y-6">
             <div className="grid gap-6 lg:grid-cols-2">
               <ClockWidget
                 currentEntry={currentEntry}
@@ -266,9 +283,9 @@ export default function EmployeeDashboard() {
                 Request Correction
               </Button>
             </div>
-          </TabsContent>
+          </div>}
 
-          <TabsContent value="timesheet">
+          {activeTab === 'timesheet' && <div>
             <WeeklyTimesheet
               timesheet={timesheets[0]}
               timesheetLines={timesheetLines}
@@ -277,9 +294,9 @@ export default function EmployeeDashboard() {
               onSubmit={() => submitTimesheetMutation.mutate()}
               isLoading={submitTimesheetMutation.isPending}
             />
-          </TabsContent>
+          </div>}
 
-          <TabsContent value="requests" className="space-y-6">
+          {activeTab === 'requests' && <div className="space-y-6">
             <div className="flex justify-end">
               <Button onClick={() => setShowAbsenceForm(true)} className="bg-blue-600 hover:bg-blue-700">
                 <Plus className="w-4 h-4 mr-2" />
@@ -344,25 +361,16 @@ export default function EmployeeDashboard() {
                 </div>
               </div>
             </div>
-          </TabsContent>
+          </div>}
 
-          {/* <TabsContent value="profile">
-            {employee && user ? (
-              <EmployeeProfileTab employee={employee} user={user} currentUser={user} />
-            ) : (
-              <div className="flex items-center justify-center py-12">
-                <div className="text-center">
-                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-slate-800 mx-auto mb-4"></div>
-                  <p className="text-slate-500">Loading profile...</p>
-                </div>
+          {activeTab === 'profile' && <div>
+            <div className="flex items-center justify-center py-12">
+              <div className="text-center">
+                <p className="text-slate-500">Profile content coming soon...</p>
               </div>
-            )}
-          </TabsContent> */}
-
-          <TabsContent value="test">
-            <div>TEST CONTENT - Can you see this?</div>
-          </TabsContent>
-        </Tabs>
+            </div>
+          </div>}
+        </div>
       </div>
 
       <AbsenceRequestForm
