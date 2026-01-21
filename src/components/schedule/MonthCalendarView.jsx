@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-import { ChevronLeft, ChevronRight, Calendar, Send, Plus } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Calendar, Send, Plus, MapPin } from 'lucide-react';
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, addMonths, subMonths, startOfWeek, endOfWeek, isSameMonth } from 'date-fns';
 import ShiftEditorDialog from './ShiftEditorDialog';
 import PublishScheduleDialog from './PublishScheduleDialog';
