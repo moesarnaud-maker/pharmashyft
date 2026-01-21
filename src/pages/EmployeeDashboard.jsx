@@ -326,7 +326,16 @@ export default function EmployeeDashboard() {
           </TabsContent>
 
           <TabsContent value="profile">
-            <EmployeeProfileTab employee={employee} user={user} currentUser={user} />
+            {employee && user ? (
+              <EmployeeProfileTab employee={employee} user={user} currentUser={user} />
+            ) : (
+              <div className="flex items-center justify-center py-12">
+                <div className="text-center">
+                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-slate-800 mx-auto mb-4"></div>
+                  <p className="text-slate-500">Loading profile...</p>
+                </div>
+              </div>
+            )}
           </TabsContent>
         </Tabs>
       </div>
