@@ -68,6 +68,7 @@ export default function EmployeeProfileTab({ employee, user, currentUser }) {
       await base44.entities.User.update(user.id, {
         first_name: formData.first_name,
         last_name: formData.last_name,
+        full_name: `${formData.first_name} ${formData.last_name}`.trim(), // Update full_name too
       });
 
       // Update Employee (other fields)
