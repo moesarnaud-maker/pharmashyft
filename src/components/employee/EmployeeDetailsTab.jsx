@@ -12,6 +12,7 @@ import { Save, MapPin } from 'lucide-react';
 
 export default function EmployeeDetailsTab({ employee, user, teams, schedules, onUpdate }) {
   const queryClient = useQueryClient();
+  const isNewEmployee = !employee; // Check if this is a new employee
   
   const { data: locations = [] } = useQuery({
     queryKey: ['locations'],
@@ -34,11 +35,11 @@ export default function EmployeeDetailsTab({ employee, user, teams, schedules, o
     contract_hours_week: employee?.contract_hours_week || 38,
     vacation_days_total: employee?.vacation_days_total || 20,
     pin_code: employee?.pin_code || '',
+    status: employee?.status || 'active',
   });
 
   const [eligibleLocationIds, setEligibleLocationIds] = useState([]);
 
-  // ✅ FIX: Update state when employeeLocations data loads
   useEffect(() => {
     if (employeeLocations.length > 0) {
       const locationIds = employeeLocations
@@ -48,7 +49,6 @@ export default function EmployeeDetailsTab({ employee, user, teams, schedules, o
     }
   }, [employeeLocations, employee?.id]);
 
-  // ✅ FIX: Update formData when employee prop changes
   useEffect(() => {
     if (employee) {
       setFormData({
@@ -59,6 +59,7 @@ export default function EmployeeDetailsTab({ employee, user, teams, schedules, o
         contract_hours_week: employee.contract_hours_week || 38,
         vacation_days_total: employee.vacation_days_total || 20,
         pin_code: employee.pin_code || '',
+        status: employee.status || 'active',
       });
     }
   }, [employee]);
@@ -71,14 +72,12 @@ export default function EmployeeDetailsTab({ employee, user, teams, schedules, o
     );
   };
 
-  // ✅ FIX: Combine Employee update + EmployeeLocations in single mutation
   const saveMutation = useMutation({
     mutationFn: async () => {
-      if (!employee?.id) {
-        throw new Error('Employee ID is required');
-      }
-
       // Validation
+      if (!formData.employee_number) {
+        throw new Error('Employee number is required');
+      }
       if (!formData.main_location_id) {
         throw new Error('Main location is required');
       }
@@ -92,75 +91,109 @@ export default function EmployeeDetailsTab({ employee, user, teams, schedules, o
         throw new Error('At least one eligible location is required');
       }
 
-      // 1. Update Employee record (including main_location_id)
-      await base44.entities.Employee.update(employee.id, {
-        employee_number: formData.employee_number,
-        team_id: formData.team_id,
-        main_location_id: formData.main_location_id, // ✅ Critical: Save main location
-        schedule_id: formData.schedule_id,
-        contract_hours_week: formData.contract_hours_week,
-        vacation_days_total: formData.vacation_days_total,
-        pin_code: formData.pin_code,
-      });
+      let employeeId;
 
-      // 2. Fetch current EmployeeLocation records
-      const currentEmployeeLocations = await base44.entities.EmployeeLocation.filter({ 
-        employee_id: employee.id 
-      });
-      
-      const currentLocationIds = currentEmployeeLocations.map(el => el.location_id);
-      
-      // 3. Delete removed locations
-      const toRemove = currentEmployeeLocations.filter(el => 
-        !finalEligibleIds.includes(el.location_id)
-      );
-      
-      for (const el of toRemove) {
-        await base44.entities.EmployeeLocation.delete(el.id);
-      }
-
-      // 4. Add new eligible locations
-      const toAdd = finalEligibleIds.filter(locId => 
-        !currentLocationIds.includes(locId)
-      );
-      
-      for (const locId of toAdd) {
-        await base44.entities.EmployeeLocation.create({
-          employee_id: employee.id,
-          location_id: locId,
-          assigned_date: new Date().toISOString().split('T')[0],
+      // CREATE or UPDATE Employee record
+      if (isNewEmployee) {
+        // CREATE new employee
+        const newEmployee = await base44.entities.Employee.create({
+          user_id: user.id,
+          employee_number: formData.employee_number,
+          team_id: formData.team_id,
+          main_location_id: formData.main_location_id,
+          schedule_id: formData.schedule_id,
+          contract_hours_week: formData.contract_hours_week,
+          vacation_days_total: formData.vacation_days_total,
+          pin_code: formData.pin_code,
+          status: formData.status,
         });
+        employeeId = newEmployee.id;
+      } else {
+        // UPDATE existing employee
+        await base44.entities.Employee.update(employee.id, {
+          employee_number: formData.employee_number,
+          team_id: formData.team_id,
+          main_location_id: formData.main_location_id,
+          schedule_id: formData.schedule_id,
+          contract_hours_week: formData.contract_hours_week,
+          vacation_days_total: formData.vacation_days_total,
+          pin_code: formData.pin_code,
+          status: formData.status,
+        });
+        employeeId = employee.id;
       }
 
-      return { finalEligibleIds };
+      // Manage EmployeeLocation records
+      if (isNewEmployee) {
+        // For new employees, just create all eligible locations
+        for (const locId of finalEligibleIds) {
+          await base44.entities.EmployeeLocation.create({
+            employee_id: employeeId,
+            location_id: locId,
+            assigned_date: new Date().toISOString().split('T')[0],
+          });
+        }
+      } else {
+        // For existing employees, sync the locations
+        const currentEmployeeLocations = await base44.entities.EmployeeLocation.filter({ 
+          employee_id: employeeId 
+        });
+        
+        const currentLocationIds = currentEmployeeLocations.map(el => el.location_id);
+        
+        // Delete removed locations
+        const toRemove = currentEmployeeLocations.filter(el => 
+          !finalEligibleIds.includes(el.location_id)
+        );
+        
+        for (const el of toRemove) {
+          await base44.entities.EmployeeLocation.delete(el.id);
+        }
+
+        // Add new eligible locations
+        const toAdd = finalEligibleIds.filter(locId => 
+          !currentLocationIds.includes(locId)
+        );
+        
+        for (const locId of toAdd) {
+          await base44.entities.EmployeeLocation.create({
+            employee_id: employeeId,
+            location_id: locId,
+            assigned_date: new Date().toISOString().split('T')[0],
+          });
+        }
+      }
+
+      return { finalEligibleIds, employeeId };
     },
     onSuccess: (data) => {
-      // ✅ Invalidate queries to refetch fresh data
       queryClient.invalidateQueries({ queryKey: ['employees'] });
-      queryClient.invalidateQueries({ queryKey: ['employeeLocations', employee.id] });
+      queryClient.invalidateQueries({ queryKey: ['employeeLocations'] });
       
-      // Update local state to match saved data
       setEligibleLocationIds(data.finalEligibleIds);
       
-      toast.success('Employee profile saved successfully');
+      toast.success(isNewEmployee ? 'Employee created successfully' : 'Employee updated successfully');
       
-      // Call parent onUpdate if needed
       if (onUpdate) {
         onUpdate({
           user_id: user.id,
-          employee_id: employee.id,
+          employee_id: data.employeeId,
           ...formData,
         });
       }
     },
     onError: (error) => {
-      toast.error(error.message || 'Failed to save employee profile');
+      toast.error(error.message || 'Failed to save employee');
       console.error('Save error:', error);
     },
   });
 
   const handleSave = () => {
     // Validation
+    if (!formData.employee_number) {
+      toast.error('Employee number is required');
+      return;
+    }
     if (!formData.main_location_id) {
       toast.error('Main location is required');
       return;
@@ -176,6 +209,14 @@ export default function EmployeeDetailsTab({ employee, user, teams, schedules, o
 
   return (
     <div className="space-y-6">
+      {isNewEmployee && (
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+          <p className="text-sm text-blue-900">
+            <strong>Creating new employee record</strong> for {user.full_name}. Fill in the required fields below.
+          </p>
+        </div>
+      )}
+
       <Card className="border-0 shadow-md">
         <CardHeader>
           <CardTitle>Employee Information</CardTitle>
@@ -183,7 +224,7 @@ export default function EmployeeDetailsTab({ employee, user, teams, schedules, o
         <CardContent className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <Label>Employee Number</Label>
+              <Label>Employee Number *</Label>
               <Input
                 placeholder="EMP001"
                 value={formData.employee_number}
@@ -219,7 +260,7 @@ export default function EmployeeDetailsTab({ employee, user, teams, schedules, o
           </div>
 
           <div>
-            <Label>Main Location (required)</Label>
+            <Label>Main Location *</Label>
             <Select
               value={formData.main_location_id}
               onValueChange={(v) => setFormData({ ...formData, main_location_id: v })}
@@ -305,7 +346,7 @@ export default function EmployeeDetailsTab({ employee, user, teams, schedules, o
             disabled={saveMutation.isPending}
           >
             <Save className="w-4 h-4 mr-2" />
-            {saveMutation.isPending ? 'Saving...' : 'Save Changes'}
+            {saveMutation.isPending ? 'Saving...' : isNewEmployee ? 'Create Employee' : 'Save Changes'}
           </Button>
         </CardContent>
       </Card>
