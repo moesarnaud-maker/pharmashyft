@@ -127,7 +127,7 @@ export default function Home() {
           className="text-center mb-12"
         >
           <h1 className="text-3xl font-bold text-slate-800 mb-2">
-            Welcome back, {user.full_name?.split(' ')[0] || 'there'}!
+          Welcome back, {user.first_name || 'there'}!
           </h1>
           <p className="text-slate-500">Choose where you'd like to go</p>
         </motion.div>

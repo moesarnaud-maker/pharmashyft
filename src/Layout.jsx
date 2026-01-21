@@ -93,15 +93,15 @@ export default function Layout({ children, currentPageName }) {
                   <DropdownMenuTrigger asChild>
                     <Button variant="ghost" size="sm" className="gap-2">
                       <div className="w-7 h-7 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center text-white text-xs font-medium">
-                        {user?.full_name?.charAt(0) || 'U'}
+                        {user?.first_name?.charAt(0) || 'U'}
                       </div>
-                      <span className="hidden sm:inline">{user?.full_name?.split(' ')[0]}</span>
+                      <span className="hidden sm:inline">{user?.first_name}</span>
                       <ChevronDown className="w-4 h-4 text-slate-400" />
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" className="w-48">
                     <div className="px-2 py-1.5">
-                      <p className="text-sm font-medium text-slate-800">{user?.full_name}</p>
+                      <p className="text-sm font-medium text-slate-800">{user?.first_name} {user?.last_name}</p>
                       <p className="text-xs text-slate-500">{user?.email}</p>
                     </div>
                     <DropdownMenuSeparator />
