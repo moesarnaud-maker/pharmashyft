@@ -12,7 +12,7 @@ import TodaySummary from '@/components/clock/TodaySummary';
 import WeeklyTimesheet from '@/components/timesheet/WeeklyTimesheet';
 import AbsenceRequestForm from '@/components/absence/AbsenceRequestForm';
 import CorrectionRequestForm from '@/components/correction/CorrectionRequestForm';
-// import EmployeeProfileTab from '@/components/employee/EmployeeProfileTab';
+import EmployeeProfileTab from '@/components/employee/EmployeeProfileTab';
 
 export default function EmployeeDashboard() {
   console.log('=== EmployeeDashboard STARTED ===');
@@ -363,13 +363,18 @@ export default function EmployeeDashboard() {
             </div>
           </div>}
 
-          {activeTab === 'profile' && <div>
-            <div className="flex items-center justify-center py-12">
-              <div className="text-center">
-                <p className="text-slate-500">Profile content coming soon...</p>
+          {activeTab === 'profile' && (
+            employee && user ? (
+              <EmployeeProfileTab employee={employee} user={user} currentUser={user} />
+            ) : (
+              <div className="flex items-center justify-center py-12">
+                <div className="text-center">
+                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-slate-800 mx-auto mb-4"></div>
+                  <p className="text-slate-500">Loading profile...</p>
+                </div>
               </div>
-            </div>
-          </div>}
+            )
+          )}
         </div>
       </div>
 
