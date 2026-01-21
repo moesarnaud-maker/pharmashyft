@@ -5,13 +5,14 @@ import { format, startOfWeek, addWeeks, parseISO, isToday } from 'date-fns';
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
-import { Clock, Calendar, FileText, Plus, AlertCircle } from 'lucide-react';
+import { Clock, Calendar, FileText, Plus, AlertCircle, User } from 'lucide-react';
 
 import ClockWidget from '@/components/clock/ClockWidget';
 import TodaySummary from '@/components/clock/TodaySummary';
 import WeeklyTimesheet from '@/components/timesheet/WeeklyTimesheet';
 import AbsenceRequestForm from '@/components/absence/AbsenceRequestForm';
 import CorrectionRequestForm from '@/components/correction/CorrectionRequestForm';
+import MyProfileTab from '@/components/employee/MyProfileTab';
 
 export default function EmployeeDashboard() {
   const [user, setUser] = useState(null);
@@ -215,6 +216,10 @@ export default function EmployeeDashboard() {
               <FileText className="w-4 h-4" />
               Requests
             </TabsTrigger>
+            <TabsTrigger value="profile" className="gap-2">
+              <User className="w-4 h-4" />
+              My Profile
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="clock" className="space-y-6">
@@ -318,6 +323,10 @@ export default function EmployeeDashboard() {
                 </div>
               </div>
             </div>
+          </TabsContent>
+
+          <TabsContent value="profile">
+            <MyProfileTab user={user} onUpdate={setUser} />
           </TabsContent>
         </Tabs>
       </div>
