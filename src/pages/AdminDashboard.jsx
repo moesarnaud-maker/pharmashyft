@@ -81,7 +81,37 @@ export default function AdminDashboard() {
       toast.success('User invited successfully');
     },
     onError: (err) => {
-      toast.error('Failed to invite user');
+      console.error('Failed to invite user:', err);
+      toast.error(err?.message || 'Failed to invite user');
+    },
+  });
+
+  const resendInviteMutation = useMutation({
+    mutationFn: async (user) => {
+      // Resend invitation email
+      await base44.users.resendInvite(user.email);
+    },
+    onSuccess: () => {
+      toast.success('Invitation resent successfully');
+    },
+    onError: (err) => {
+      console.error('Failed to resend invitation:', err);
+      toast.error(err?.message || 'Failed to resend invitation');
+    },
+  });
+
+  const cancelInviteMutation = useMutation({
+    mutationFn: async (user) => {
+      // Delete the pending user invitation
+      await base44.entities.User.delete(user.id);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['users'] });
+      toast.success('Invitation cancelled');
+    },
+    onError: (err) => {
+      console.error('Failed to cancel invitation:', err);
+      toast.error(err?.message || 'Failed to cancel invitation');
     },
   });
 
@@ -98,6 +128,13 @@ export default function AdminDashboard() {
           pin_code: data.pin_code,
         });
       } else {
+        // Check if employee already exists for this user
+        const existingEmployee = employees.find(e => e.user_id === data.user_id);
+        if (existingEmployee) {
+          toast.error('Employee record already exists for this user');
+          throw new Error('Employee already exists');
+        }
+        
         await base44.entities.Employee.create({
           user_id: data.user_id,
           employee_number: data.employee_number,
@@ -115,6 +152,12 @@ export default function AdminDashboard() {
       queryClient.invalidateQueries({ queryKey: ['employees'] });
       toast.success('Employee profile updated successfully');
     },
+    onError: (error) => {
+      if (error.message !== 'Employee already exists') {
+        console.error('Failed to update employee:', error);
+        toast.error(error?.message || 'Failed to update employee profile');
+      }
+    },
   });
 
   const teamMutation = useMutation({
@@ -131,6 +174,10 @@ export default function AdminDashboard() {
       queryClient.invalidateQueries({ queryKey: ['teams'] });
       toast.success('Team updated successfully');
     },
+    onError: (error) => {
+      console.error('Team mutation failed:', error);
+      toast.error(error?.message || 'Failed to update team');
+    },
   });
 
   const settingsMutation = useMutation({
@@ -146,6 +193,11 @@ export default function AdminDashboard() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['settings'] });
+      toast.success('Settings saved successfully');
+    },
+    onError: (error) => {
+      console.error('Failed to save settings:', error);
+      toast.error(error?.message || 'Failed to save settings');
     },
   });
 
@@ -246,6 +298,8 @@ export default function AdminDashboard() {
               schedules={schedules}
               onInviteUser={(data) => inviteUserMutation.mutate(data)}
               onUpdateEmployee={(data) => updateEmployeeMutation.mutate(data)}
+              onResendInvite={(user) => resendInviteMutation.mutate(user)}
+              onCancelInvite={(user) => cancelInviteMutation.mutate(user)}
               isLoading={inviteUserMutation.isPending || updateEmployeeMutation.isPending}
             />
           </TabsContent>

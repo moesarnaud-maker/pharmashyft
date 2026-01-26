@@ -7,7 +7,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { UserPlus, Search, MoreHorizontal, Mail, Shield, Users } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { UserPlus, Search, MoreHorizontal, Mail, Shield, Users, Clock, Send, X } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import EmployeeProfileDialog from '@/components/employee/EmployeeProfileDialog';
 
@@ -18,6 +19,8 @@ export default function UserManagement({
   schedules = [],
   onInviteUser, 
   onUpdateEmployee,
+  onResendInvite,
+  onCancelInvite,
   isLoading 
 }) {
   const [searchTerm, setSearchTerm] = useState('');
@@ -29,8 +32,16 @@ export default function UserManagement({
   const getEmployeeForUser = (userId) => employees.find(e => e.user_id === userId);
   const getTeamName = (teamId) => teams.find(t => t.id === teamId)?.name || '-';
 
-  const filteredUsers = users.filter(u => 
+  // Separate active users and pending invitations
+  const activeUsers = users.filter(u => u.status === 'active' || !u.status);
+  const pendingInvitations = users.filter(u => u.status === 'pending_invitation');
+
+  const filteredActiveUsers = activeUsers.filter(u => 
     u.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    u.email?.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  const filteredPendingInvitations = pendingInvitations.filter(u => 
     u.email?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
@@ -49,6 +60,18 @@ export default function UserManagement({
   const handleCloseProfile = () => {
     setSelectedUser(null);
     setSelectedEmployee(null);
+  };
+
+  const handleResendInvite = (user) => {
+    if (onResendInvite) {
+      onResendInvite(user);
+    }
+  };
+
+  const handleCancelInvite = (user) => {
+    if (onCancelInvite) {
+      onCancelInvite(user);
+    }
   };
 
   const roleColors = {
@@ -81,61 +104,154 @@ export default function UserManagement({
             </div>
           </div>
 
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>User</TableHead>
-                <TableHead>Role</TableHead>
-                <TableHead>Employee #</TableHead>
-                <TableHead>Team</TableHead>
-                <TableHead>Contract Hours</TableHead>
-                <TableHead className="w-12"></TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredUsers.map(user => {
-                const emp = getEmployeeForUser(user.id);
-                return (
-                  <TableRow key={user.id}>
-                    <TableCell>
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center text-white font-medium">
-                          {user.full_name?.charAt(0) || user.email?.charAt(0)}
-                        </div>
-                        <div>
-                          <div className="font-medium text-slate-800">{user.full_name || 'No name'}</div>
-                          <div className="text-sm text-slate-500">{user.email}</div>
-                        </div>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <Badge className={roleColors[user.role] || roleColors.user}>
-                        <Shield className="w-3 h-3 mr-1" />
-                        {user.role || 'user'}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>{emp?.employee_number || '-'}</TableCell>
-                    <TableCell>{getTeamName(emp?.team_id)}</TableCell>
-                    <TableCell>{emp?.contract_hours_week ? `${emp.contract_hours_week}h/week` : '-'}</TableCell>
-                    <TableCell>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon">
-                            <MoreHorizontal className="w-4 h-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={() => handleEditEmployee(user)}>
-                            Edit Employee Details
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
+          <Tabs defaultValue="active">
+            <TabsList className="mb-4">
+              <TabsTrigger value="active" className="gap-2">
+                <Users className="w-4 h-4" />
+                Active Users ({activeUsers.length})
+              </TabsTrigger>
+              <TabsTrigger value="pending" className="gap-2">
+                <Clock className="w-4 h-4" />
+                Pending Invitations ({pendingInvitations.length})
+              </TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="active">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>User</TableHead>
+                    <TableHead>Role</TableHead>
+                    <TableHead>Employee #</TableHead>
+                    <TableHead>Team</TableHead>
+                    <TableHead>Contract Hours</TableHead>
+                    <TableHead className="w-12"></TableHead>
                   </TableRow>
-                );
-              })}
-            </TableBody>
-          </Table>
+                </TableHeader>
+                <TableBody>
+                  {filteredActiveUsers.map(user => {
+                    const emp = getEmployeeForUser(user.id);
+                    return (
+                      <TableRow key={user.id}>
+                        <TableCell>
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center text-white font-medium">
+                              {user.full_name?.charAt(0) || user.email?.charAt(0)}
+                            </div>
+                            <div>
+                              <div className="font-medium text-slate-800">{user.full_name || 'No name'}</div>
+                              <div className="text-sm text-slate-500">{user.email}</div>
+                            </div>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <Badge className={roleColors[user.role] || roleColors.user}>
+                            <Shield className="w-3 h-3 mr-1" />
+                            {user.role || 'user'}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>{emp?.employee_number || '-'}</TableCell>
+                        <TableCell>{getTeamName(emp?.team_id)}</TableCell>
+                        <TableCell>{emp?.contract_hours_week ? `${emp.contract_hours_week}h/week` : '-'}</TableCell>
+                        <TableCell>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="icon">
+                                <MoreHorizontal className="w-4 h-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem onClick={() => handleEditEmployee(user)}>
+                                Edit Employee Details
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </TabsContent>
+
+            <TabsContent value="pending">
+              {filteredPendingInvitations.length === 0 ? (
+                <div className="text-center py-12">
+                  <Clock className="w-12 h-12 mx-auto mb-4 text-slate-300" />
+                  <h3 className="text-lg font-semibold text-slate-800 mb-2">No Pending Invitations</h3>
+                  <p className="text-slate-500">All invited users have completed registration</p>
+                </div>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Email</TableHead>
+                      <TableHead>Role</TableHead>
+                      <TableHead>Invited On</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead className="w-12"></TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredPendingInvitations.map(user => (
+                      <TableRow key={user.id}>
+                        <TableCell>
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-full bg-slate-200 flex items-center justify-center text-slate-500 font-medium">
+                              <Mail className="w-5 h-5" />
+                            </div>
+                            <div>
+                              <div className="font-medium text-slate-800">{user.email}</div>
+                              <div className="text-xs text-slate-500">Awaiting registration</div>
+                            </div>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <Badge className={roleColors[user.role] || roleColors.user}>
+                            <Shield className="w-3 h-3 mr-1" />
+                            {user.role || 'user'}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <div className="text-sm text-slate-600">
+                            {user.invited_at ? new Date(user.invited_at).toLocaleDateString() : '-'}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <Badge className="bg-amber-100 text-amber-700">
+                            <Clock className="w-3 h-3 mr-1" />
+                            Pending
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="icon">
+                                <MoreHorizontal className="w-4 h-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem onClick={() => handleResendInvite(user)}>
+                                <Send className="w-4 h-4 mr-2" />
+                                Resend Invitation
+                              </DropdownMenuItem>
+                              <DropdownMenuItem 
+                                onClick={() => handleCancelInvite(user)}
+                                className="text-red-600"
+                              >
+                                <X className="w-4 h-4 mr-2" />
+                                Cancel Invitation
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
+            </TabsContent>
+          </Tabs>
         </CardContent>
       </Card>
 

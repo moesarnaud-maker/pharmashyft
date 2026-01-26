@@ -38,6 +38,20 @@ export default function EmployeeScheduleHistory({
         });
       }
 
+      // Delete ALL future shifts (both draft AND published) for this employee
+      const today = format(new Date(), 'yyyy-MM-dd');
+      const allFutureShifts = await base44.entities.ScheduledShift.filter({ 
+        employee_id: employeeId 
+      });
+      
+      // Filter to only future shifts (date >= today)
+      const futureShifts = allFutureShifts.filter(shift => shift.date >= today);
+      
+      // Delete all future shifts regardless of status
+      for (const shift of futureShifts) {
+        await base44.entities.ScheduledShift.delete(shift.id);
+      }
+
       // Create new assignment
       const assignment = await base44.entities.EmployeeScheduleAssignment.create({
         employee_id: employeeId,
@@ -50,7 +64,7 @@ export default function EmployeeScheduleHistory({
       return assignment;
     },
     onSuccess: () => {
-      toast.success('Schedule assigned and shifts generated');
+      toast.success('Schedule assigned and all future shifts regenerated');
       queryClient.invalidateQueries({ queryKey: ['employeeScheduleAssignments'] });
       queryClient.invalidateQueries({ queryKey: ['scheduledShifts'] });
       setShowDialog(false);
@@ -60,6 +74,10 @@ export default function EmployeeScheduleHistory({
         effective_end_date: '',
         notes: '',
       });
+    },
+    onError: (error) => {
+      console.error('Failed to assign schedule:', error);
+      toast.error(error?.message || 'Failed to assign schedule');
     },
   });
 
@@ -84,6 +102,10 @@ export default function EmployeeScheduleHistory({
       toast.success('Schedule unassigned');
       queryClient.invalidateQueries({ queryKey: ['employeeScheduleAssignments'] });
       queryClient.invalidateQueries({ queryKey: ['scheduledShifts'] });
+    },
+    onError: (error) => {
+      console.error('Failed to unassign schedule:', error);
+      toast.error(error?.message || 'Failed to unassign schedule');
     },
   });
 
@@ -123,6 +145,7 @@ export default function EmployeeScheduleHistory({
                 variant="ghost" 
                 size="sm" 
                 onClick={() => unassignMutation.mutate(currentAssignment.id)}
+                disabled={unassignMutation.isPending}
                 className="text-red-600 hover:text-red-700"
               >
                 <Trash2 className="w-3 h-3 mr-1" />
@@ -217,7 +240,7 @@ export default function EmployeeScheduleHistory({
                 onClick={() => assignMutation.mutate()}
                 disabled={!formData.template_id || assignMutation.isPending}
               >
-                Assign Schedule
+                {assignMutation.isPending ? 'Assigning...' : 'Assign Schedule'}
               </Button>
             </div>
           </div>
