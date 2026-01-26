@@ -2,10 +2,22 @@ import { base44 } from '@/api/base44Client';
 import { differenceInWeeks, startOfWeek, addDays, addWeeks, format } from 'date-fns';
 
 export async function generateShiftsForAssignment(assignment, template, weeks, days, weeksAhead = 12) {
+  if (!assignment || !template) {
+    throw new Error('Missing required assignment or template data');
+  }
+
   const shifts = [];
   const startDate = new Date(assignment.effective_start_date);
   const endDate = assignment.effective_end_date ? new Date(assignment.effective_end_date) : addWeeks(startDate, weeksAhead);
   
+  // Get employee to access their main_location_id
+  const employee = await base44.entities.Employee.filter({ id: assignment.employee_id });
+  
+  if (!employee || employee.length === 0) {
+    throw new Error('Employee not found');
+  }
+  
+  const mainLocationId = employee[0]?.main_location_id;
   const assignmentStart = startOfWeek(startDate, { weekStartsOn: 1 });
   
   for (let weekDate = startOfWeek(startDate, { weekStartsOn: 1 }); weekDate <= endDate; weekDate = addWeeks(weekDate, 1)) {
@@ -30,7 +42,8 @@ export async function generateShiftsForAssignment(assignment, template, weeks, d
           end_time: scheduleDay.end_time,
           break_minutes: scheduleDay.break_minutes || 30,
           expected_hours: scheduleDay.expected_hours,
-          location_id: scheduleDay.location_id,
+          // Use template location if specified, otherwise fall back to employee's main location
+          location_id: scheduleDay.location_id || mainLocationId,
           source: 'template',
           template_assignment_id: assignment.id,
           status: 'draft',
