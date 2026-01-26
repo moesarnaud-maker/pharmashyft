@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { base44 } from '@/api/base44Client';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,12 +10,16 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
-import { Calendar, Clock, Plus, Trash2, Save } from 'lucide-react';
+import { Calendar, Clock, Plus, Trash2, Save, MapPin } from 'lucide-react';
+import { LoadingSpinner } from '@/components/common/LoadingSpinner';
+import { ErrorDisplay } from '@/components/common/ErrorDisplay';
 
 const WEEKDAYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
 const WEEK_LABELS = ['Week A', 'Week B', 'Week C', 'Week D', 'Week E', 'Week F'];
 
-const DayEditor = ({ day, onUpdate, onRemove }) => {
+const DayEditor = ({ day, onUpdate, locations, useMainLocation }) => {
+  const [useCustomLocation, setUseCustomLocation] = useState(!!day.location_id);
+
   return (
     <Card className="p-4">
       <div className="flex items-center justify-between mb-3">
@@ -73,6 +77,52 @@ const DayEditor = ({ day, onUpdate, onRemove }) => {
               />
             </div>
           </div>
+
+          {/* Location Override Section */}
+          <div className="space-y-2 pt-2 border-t">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <MapPin className="w-3.5 h-3.5 text-slate-500" />
+                <Label className="text-xs">Location</Label>
+              </div>
+              <div className="flex items-center gap-2">
+                <Switch
+                  checked={useCustomLocation}
+                  onCheckedChange={(checked) => {
+                    setUseCustomLocation(checked);
+                    if (!checked) {
+                      onUpdate({ ...day, location_id: null });
+                    }
+                  }}
+                />
+                <span className="text-xs text-slate-500">
+                  {useCustomLocation ? 'Custom' : 'Default'}
+                </span>
+              </div>
+            </div>
+
+            {useCustomLocation ? (
+              <Select
+                value={day.location_id || ''}
+                onValueChange={(v) => onUpdate({ ...day, location_id: v })}
+              >
+                <SelectTrigger className="h-8">
+                  <SelectValue placeholder="Select location" />
+                </SelectTrigger>
+                <SelectContent>
+                  {locations.map(loc => (
+                    <SelectItem key={loc.id} value={loc.id}>
+                      {loc.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            ) : (
+              <p className="text-xs text-slate-500 italic">
+                Will use employee's main location
+              </p>
+            )}
+          </div>
         </div>
       )}
     </Card>
@@ -90,6 +140,17 @@ export default function ScheduleTemplateBuilder({ template, onClose }) {
   });
 
   const [weeks, setWeeks] = useState([]);
+
+  // Fetch all locations for the location dropdown
+  const { data: locations = [], isLoading: isLoadingLocations, isError: isLocationsError, error: locationsError } = useQuery({
+    queryKey: ['locations'],
+    queryFn: () => base44.entities.Location.filter({}),
+    retry: 2,
+    onError: (err) => {
+      console.error('Failed to load locations:', err);
+      toast.error('Failed to load locations');
+    }
+  });
 
   useEffect(() => {
     if (template) {
@@ -123,6 +184,7 @@ export default function ScheduleTemplateBuilder({ template, onClose }) {
         break_minutes: 30,
         expected_hours: weekday === 'saturday' || weekday === 'sunday' ? 0 : 7.6,
         is_working_day: weekday !== 'saturday' && weekday !== 'sunday',
+        location_id: null, // null means use employee's main location
       }));
       newWeeks.push({
         week_index: i,
@@ -295,6 +357,7 @@ export default function ScheduleTemplateBuilder({ template, onClose }) {
                     <DayEditor
                       key={dayIdx}
                       day={day}
+                      locations={locations}
                       onUpdate={(updated) => updateDay(weekIdx, dayIdx, updated)}
                     />
                   ))}
