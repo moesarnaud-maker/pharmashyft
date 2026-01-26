@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { format, startOfWeek, addWeeks, parseISO, isToday } from 'date-fns';
@@ -13,10 +13,12 @@ import WeeklyTimesheet from '@/components/timesheet/WeeklyTimesheet';
 import AbsenceRequestForm from '@/components/absence/AbsenceRequestForm';
 import CorrectionRequestForm from '@/components/correction/CorrectionRequestForm';
 import EmployeeProfileTab from '@/components/employee/EmployeeProfileTab';
+import { LoadingSpinner } from '@/components/common/LoadingSpinner';
+import { ErrorDisplay } from '@/components/common/ErrorDisplay';
+import { StatusBadge } from '@/components/common/StatusBadge';
+import { REFETCH_INTERVALS, ENTRY_TYPES } from '@/components/constants';
 
 export default function EmployeeDashboard() {
-  console.log('=== EmployeeDashboard STARTED ===');
-  
   const [user, setUser] = useState(null);
   const [employee, setEmployee] = useState(null);
   const [weekOffset, setWeekOffset] = useState(0);
@@ -25,7 +27,10 @@ export default function EmployeeDashboard() {
   const [activeTab, setActiveTab] = useState('clock');
   const queryClient = useQueryClient();
 
-  const weekStart = startOfWeek(addWeeks(new Date(), weekOffset), { weekStartsOn: 1 });
+  const weekStart = useMemo(() => 
+    startOfWeek(addWeeks(new Date(), weekOffset), { weekStartsOn: 1 }),
+    [weekOffset]
+  );
 
   useEffect(() => {
     const loadUser = async () => {
@@ -35,15 +40,22 @@ export default function EmployeeDashboard() {
     loadUser();
   }, []);
 
-  const { data: employees = [] } = useQuery({
+  const { data: employees = [], isError: isEmployeesError, error: employeesError } = useQuery({
     queryKey: ['employees', user?.id],
     queryFn: () => base44.entities.Employee.filter({ user_id: user?.id }),
     enabled: !!user?.id,
+    retry: 2,
+    onError: (err) => {
+      console.error('Failed to load employees:', err);
+      toast.error('Failed to load employee data');
+    }
   });
 
   useEffect(() => {
-    if (employees.length > 0) setEmployee(employees[0]);
-  }, [employees]);
+    if (employees.length > 0 && !employee) {
+      setEmployee(employees[0]);
+    }
+  }, [employees, employee]);
 
   const { data: todayEntries = [] } = useQuery({
     queryKey: ['timeEntries', 'today', employee?.id],
@@ -52,7 +64,7 @@ export default function EmployeeDashboard() {
       date: format(new Date(), 'yyyy-MM-dd') 
     }),
     enabled: !!employee?.id,
-    refetchInterval: 30000,
+    refetchInterval: REFETCH_INTERVALS.TIME_ENTRIES,
   });
 
   const { data: timesheets = [] } = useQuery({
@@ -82,8 +94,15 @@ export default function EmployeeDashboard() {
     enabled: !!employee?.id,
   });
 
-  const currentEntry = todayEntries.find(e => e.entry_type === 'work' && !e.end_time);
-  const currentBreak = todayEntries.find(e => e.entry_type === 'break' && !e.end_time);
+  const currentEntry = useMemo(() => 
+    todayEntries.find(e => e.entry_type === ENTRY_TYPES.WORK && !e.end_time),
+    [todayEntries]
+  );
+
+  const currentBreak = useMemo(() => 
+    todayEntries.find(e => e.entry_type === ENTRY_TYPES.BREAK && !e.end_time),
+    [todayEntries]
+  );
 
   const clockInMutation = useMutation({
     mutationFn: async (location) => {
@@ -103,6 +122,10 @@ export default function EmployeeDashboard() {
       queryClient.invalidateQueries({ queryKey: ['timeEntries'] });
       toast.success('Clocked in successfully');
     },
+    onError: (error) => {
+      console.error('Clock in failed:', error);
+      toast.error(error?.message || 'Failed to clock in. Please try again.');
+    },
   });
 
   const clockOutMutation = useMutation({
@@ -121,6 +144,10 @@ export default function EmployeeDashboard() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['timeEntries'] });
       toast.success('Clocked out successfully');
+    },
+    onError: (error) => {
+      console.error('Clock out failed:', error);
+      toast.error(error?.message || 'Failed to clock out. Please try again.');
     },
   });
 
@@ -148,6 +175,10 @@ export default function EmployeeDashboard() {
       queryClient.invalidateQueries({ queryKey: ['timeEntries'] });
       toast.success('Break updated');
     },
+    onError: (error) => {
+      console.error('Break mutation failed:', error);
+      toast.error(error?.message || 'Failed to update break. Please try again.');
+    },
   });
 
   const submitTimesheetMutation = useMutation({
@@ -161,6 +192,10 @@ export default function EmployeeDashboard() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['timesheets'] });
       toast.success('Timesheet submitted for approval');
+    },
+    onError: (error) => {
+      console.error('Submit timesheet failed:', error);
+      toast.error(error?.message || 'Failed to submit timesheet. Please try again.');
     },
   });
 
@@ -178,6 +213,10 @@ export default function EmployeeDashboard() {
       setShowAbsenceForm(false);
       toast.success('Absence request submitted');
     },
+    onError: (error) => {
+      console.error('Absence request failed:', error);
+      toast.error(error?.message || 'Failed to submit absence request. Please try again.');
+    },
   });
 
   const correctionMutation = useMutation({
@@ -193,25 +232,51 @@ export default function EmployeeDashboard() {
       setShowCorrectionForm(false);
       toast.success('Correction request submitted');
     },
+    onError: (error) => {
+      console.error('Correction request failed:', error);
+      toast.error(error?.message || 'Failed to submit correction request. Please try again.');
+    },
   });
 
-  console.log('User:', user);
-  console.log('Employee:', employee);
-  console.log('Employees array:', employees);
+  const handleShowAbsenceForm = useCallback(() => {
+    setShowAbsenceForm(true);
+  }, []);
+
+  const handleShowCorrectionForm = useCallback(() => {
+    setShowCorrectionForm(true);
+  }, []);
+
+  const handleWeekChange = useCallback((delta) => {
+    setWeekOffset(prev => prev + delta);
+  }, []);
+
+  if (isEmployeesError) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <ErrorDisplay 
+          error={employeesError} 
+          message="Failed to load employee data"
+          onRetry={() => queryClient.invalidateQueries(['employees'])}
+        />
+      </div>
+    );
+  }
 
   if (!user) {
-    return <div className="min-h-screen flex items-center justify-center">
-      <p>Loading user data...</p>
-    </div>;
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <LoadingSpinner message="Loading user data..." />
+      </div>
+    );
   }
 
   if (!employee) {
-    return <div className="min-h-screen flex items-center justify-center">
-      <p>Loading employee data...</p>
-    </div>;
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <LoadingSpinner message="Loading employee data..." />
+      </div>
+    );
   }
-
-  console.log('=== ABOUT TO RENDER, user:', user, 'employee:', employee);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
@@ -224,7 +289,6 @@ export default function EmployeeDashboard() {
         </div>
 
         <div className="space-y-6">
-          {console.log('Rendering tabs, user:', user, 'employee:', employee)}
           <div className="flex gap-2 mb-6 p-2 bg-white rounded-lg shadow-sm border flex-wrap">
             <Button 
               variant={activeTab === 'clock' ? 'default' : 'ghost'}
@@ -278,7 +342,7 @@ export default function EmployeeDashboard() {
             </div>
 
             <div className="flex gap-3">
-              <Button variant="outline" onClick={() => setShowCorrectionForm(true)}>
+              <Button variant="outline" onClick={handleShowCorrectionForm}>
                 <AlertCircle className="w-4 h-4 mr-2" />
                 Request Correction
               </Button>
@@ -290,7 +354,7 @@ export default function EmployeeDashboard() {
               timesheet={timesheets[0]}
               timesheetLines={timesheetLines}
               weekStart={weekStart}
-              onWeekChange={(delta) => setWeekOffset(weekOffset + delta)}
+              onWeekChange={handleWeekChange}
               onSubmit={() => submitTimesheetMutation.mutate()}
               isLoading={submitTimesheetMutation.isPending}
             />
@@ -298,7 +362,7 @@ export default function EmployeeDashboard() {
 
           {activeTab === 'requests' && <div className="space-y-6">
             <div className="flex justify-end">
-              <Button onClick={() => setShowAbsenceForm(true)} className="bg-blue-600 hover:bg-blue-700">
+              <Button onClick={handleShowAbsenceForm} className="bg-blue-600 hover:bg-blue-700">
                 <Plus className="w-4 h-4 mr-2" />
                 Request Time Off
               </Button>
