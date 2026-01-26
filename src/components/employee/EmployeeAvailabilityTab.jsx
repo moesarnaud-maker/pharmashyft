@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
-import { Save, Calendar, Clock } from 'lucide-react';
+import { Save, Calendar, Clock, Copy, ClipboardPaste } from 'lucide-react';
 
 const WEEKDAYS = [
   { value: 'monday', label: 'Monday' },
@@ -22,6 +22,7 @@ const WEEKDAYS = [
 
 export default function EmployeeAvailabilityTab({ employee }) {
   const queryClient = useQueryClient();
+  const [copiedDay, setCopiedDay] = useState(null);
 
   const { data: availabilities = [] } = useQuery({
     queryKey: ['employeeAvailability', employee?.id],
@@ -101,6 +102,31 @@ export default function EmployeeAvailabilityTab({ employee }) {
     }));
   };
 
+  const handleCopy = (weekday) => {
+    const dayData = availabilityData[weekday];
+    setCopiedDay({
+      weekday,
+      data: { ...dayData }
+    });
+    toast.success(`Copied ${WEEKDAYS.find(d => d.value === weekday)?.label} availability`);
+  };
+
+  const handlePaste = (weekday) => {
+    if (!copiedDay) {
+      toast.error('No availability data copied');
+      return;
+    }
+    
+    setAvailabilityData(prev => ({
+      ...prev,
+      [weekday]: { ...copiedDay.data }
+    }));
+    
+    const sourceDayLabel = WEEKDAYS.find(d => d.value === copiedDay.weekday)?.label;
+    const targetDayLabel = WEEKDAYS.find(d => d.value === weekday)?.label;
+    toast.success(`Pasted ${sourceDayLabel} availability to ${targetDayLabel}`);
+  };
+
   const handleSave = () => {
     saveMutation.mutate();
   };
@@ -123,6 +149,27 @@ export default function EmployeeAvailabilityTab({ employee }) {
                   <div className="flex items-center justify-between">
                     <Label className="text-base font-semibold">{day.label}</Label>
                     <div className="flex items-center gap-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleCopy(day.value)}
+                        className="h-8"
+                      >
+                        <Copy className="w-3.5 h-3.5 mr-1" />
+                        Copy
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handlePaste(day.value)}
+                        disabled={!copiedDay}
+                        className="h-8"
+                      >
+                        <ClipboardPaste className="w-3.5 h-3.5 mr-1" />
+                        Paste
+                      </Button>
                       <Switch
                         checked={data.is_available}
                         onCheckedChange={(checked) => updateDay(day.value, 'is_available', checked)}
