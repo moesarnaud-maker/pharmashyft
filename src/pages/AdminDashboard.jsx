@@ -81,28 +81,24 @@ export default function AdminDashboard() {
       toast.success('User invited successfully');
     },
     onError: (err) => {
-      console.error('Failed to invite user:', err);
-      toast.error(err?.message || 'Failed to invite user');
+      toast.error('Failed to invite user');
     },
   });
 
   const resendInviteMutation = useMutation({
     mutationFn: async (user) => {
-      // Resend invitation email
       await base44.users.resendInvite(user.email);
     },
     onSuccess: () => {
       toast.success('Invitation resent successfully');
     },
     onError: (err) => {
-      console.error('Failed to resend invitation:', err);
-      toast.error(err?.message || 'Failed to resend invitation');
+      toast.error('Failed to resend invitation');
     },
   });
 
   const cancelInviteMutation = useMutation({
     mutationFn: async (user) => {
-      // Delete the pending user invitation
       await base44.entities.User.delete(user.id);
     },
     onSuccess: () => {
@@ -110,8 +106,75 @@ export default function AdminDashboard() {
       toast.success('Invitation cancelled');
     },
     onError: (err) => {
-      console.error('Failed to cancel invitation:', err);
-      toast.error(err?.message || 'Failed to cancel invitation');
+      toast.error('Failed to cancel invitation');
+    },
+  });
+
+  const deleteUserMutation = useMutation({
+    mutationFn: async (user) => {
+      const employee = employees.find(e => e.user_id === user.id);
+      
+      if (employee) {
+        const timeEntries = await base44.entities.TimeEntry.filter({ employee_id: employee.id });
+        for (const entry of timeEntries) {
+          await base44.entities.TimeEntry.delete(entry.id);
+        }
+        
+        const timesheets = await base44.entities.Timesheet.filter({ employee_id: employee.id });
+        for (const timesheet of timesheets) {
+          const lines = await base44.entities.TimesheetLine.filter({ timesheet_id: timesheet.id });
+          for (const line of lines) {
+            await base44.entities.TimesheetLine.delete(line.id);
+          }
+          await base44.entities.Timesheet.delete(timesheet.id);
+        }
+        
+        const shifts = await base44.entities.ScheduledShift.filter({ employee_id: employee.id });
+        for (const shift of shifts) {
+          await base44.entities.ScheduledShift.delete(shift.id);
+        }
+        
+        const assignments = await base44.entities.EmployeeScheduleAssignment.filter({ employee_id: employee.id });
+        for (const assignment of assignments) {
+          await base44.entities.EmployeeScheduleAssignment.delete(assignment.id);
+        }
+        
+        const availability = await base44.entities.EmployeeAvailability.filter({ employee_id: employee.id });
+        for (const avail of availability) {
+          await base44.entities.EmployeeAvailability.delete(avail.id);
+        }
+        
+        const absenceRequests = await base44.entities.AbsenceRequest.filter({ employee_id: employee.id });
+        for (const request of absenceRequests) {
+          await base44.entities.AbsenceRequest.delete(request.id);
+        }
+        
+        const correctionRequests = await base44.entities.CorrectionRequest.filter({ employee_id: employee.id });
+        for (const request of correctionRequests) {
+          await base44.entities.CorrectionRequest.delete(request.id);
+        }
+        
+        const employeeLocations = await base44.entities.EmployeeLocation.filter({ employee_id: employee.id });
+        for (const location of employeeLocations) {
+          await base44.entities.EmployeeLocation.delete(location.id);
+        }
+        
+        await base44.entities.Employee.delete(employee.id);
+      }
+      
+      await base44.entities.User.delete(user.id);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['users'] });
+      queryClient.invalidateQueries({ queryKey: ['employees'] });
+      queryClient.invalidateQueries({ queryKey: ['timeEntries'] });
+      queryClient.invalidateQueries({ queryKey: ['timesheets'] });
+      queryClient.invalidateQueries({ queryKey: ['scheduledShifts'] });
+      toast.success('User and employee deleted successfully');
+    },
+    onError: (err) => {
+      console.error('Delete user error:', err);
+      toast.error('Failed to delete user: ' + (err.message || 'Unknown error'));
     },
   });
 
@@ -128,7 +191,6 @@ export default function AdminDashboard() {
           pin_code: data.pin_code,
         });
       } else {
-        // Check if employee already exists for this user
         const existingEmployee = employees.find(e => e.user_id === data.user_id);
         if (existingEmployee) {
           toast.error('Employee record already exists for this user');
@@ -154,8 +216,7 @@ export default function AdminDashboard() {
     },
     onError: (error) => {
       if (error.message !== 'Employee already exists') {
-        console.error('Failed to update employee:', error);
-        toast.error(error?.message || 'Failed to update employee profile');
+        toast.error('Failed to update employee profile');
       }
     },
   });
@@ -174,10 +235,6 @@ export default function AdminDashboard() {
       queryClient.invalidateQueries({ queryKey: ['teams'] });
       toast.success('Team updated successfully');
     },
-    onError: (error) => {
-      console.error('Team mutation failed:', error);
-      toast.error(error?.message || 'Failed to update team');
-    },
   });
 
   const settingsMutation = useMutation({
@@ -193,11 +250,6 @@ export default function AdminDashboard() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['settings'] });
-      toast.success('Settings saved successfully');
-    },
-    onError: (error) => {
-      console.error('Failed to save settings:', error);
-      toast.error(error?.message || 'Failed to save settings');
     },
   });
 
@@ -300,7 +352,8 @@ export default function AdminDashboard() {
               onUpdateEmployee={(data) => updateEmployeeMutation.mutate(data)}
               onResendInvite={(user) => resendInviteMutation.mutate(user)}
               onCancelInvite={(user) => cancelInviteMutation.mutate(user)}
-              isLoading={inviteUserMutation.isPending || updateEmployeeMutation.isPending}
+              onDeleteUser={(user) => deleteUserMutation.mutate(user)}
+              isLoading={inviteUserMutation.isPending || updateEmployeeMutation.isPending || deleteUserMutation.isPending}
             />
           </TabsContent>
 

@@ -3,14 +3,15 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { UserPlus, Search, MoreHorizontal, Mail, Shield, Users, Clock, Send, X } from 'lucide-react';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { UserPlus, Search, MoreHorizontal, Mail, Shield, Users, Clock, Send, X, Trash2, AlertTriangle } from 'lucide-react';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import EmployeeProfileDialog from '@/components/employee/EmployeeProfileDialog';
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 export default function UserManagement({ 
   users = [], 
@@ -21,10 +22,13 @@ export default function UserManagement({
   onUpdateEmployee,
   onResendInvite,
   onCancelInvite,
+  onDeleteUser,
   isLoading 
 }) {
   const [searchTerm, setSearchTerm] = useState('');
   const [showInviteDialog, setShowInviteDialog] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [userToDelete, setUserToDelete] = useState(null);
   const [inviteForm, setInviteForm] = useState({ email: '', role: 'user' });
   const [selectedUser, setSelectedUser] = useState(null);
   const [selectedEmployee, setSelectedEmployee] = useState(null);
@@ -72,6 +76,19 @@ export default function UserManagement({
     if (onCancelInvite) {
       onCancelInvite(user);
     }
+  };
+
+  const handleDeleteClick = (user) => {
+    setUserToDelete(user);
+    setShowDeleteDialog(true);
+  };
+
+  const handleConfirmDelete = () => {
+    if (onDeleteUser && userToDelete) {
+      onDeleteUser(userToDelete);
+    }
+    setShowDeleteDialog(false);
+    setUserToDelete(null);
   };
 
   const roleColors = {
@@ -163,6 +180,14 @@ export default function UserManagement({
                             <DropdownMenuContent align="end">
                               <DropdownMenuItem onClick={() => handleEditEmployee(user)}>
                                 Edit Employee Details
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem 
+                                onClick={() => handleDeleteClick(user)}
+                                className="text-red-600 focus:text-red-600"
+                              >
+                                <Trash2 className="w-4 h-4 mr-2" />
+                                Delete User
                               </DropdownMenuItem>
                             </DropdownMenuContent>
                           </DropdownMenu>
@@ -292,6 +317,64 @@ export default function UserManagement({
             <Button onClick={handleInvite} disabled={!inviteForm.email} className="bg-blue-600 hover:bg-blue-700">
               <Mail className="w-4 h-4 mr-2" />
               Send Invite
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-red-600">
+              <AlertTriangle className="w-5 h-5" />
+              Delete User & Employee
+            </DialogTitle>
+            <DialogDescription>
+              This action cannot be undone. This will permanently delete the user account and associated employee record.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            {userToDelete && (
+              <>
+                <Alert variant="destructive">
+                  <AlertTriangle className="h-4 w-4" />
+                  <AlertDescription>
+                    <strong>Warning:</strong> You are about to delete:
+                    <ul className="mt-2 ml-4 list-disc">
+                      <li><strong>User:</strong> {userToDelete.full_name || userToDelete.email}</li>
+                      <li><strong>Email:</strong> {userToDelete.email}</li>
+                      {getEmployeeForUser(userToDelete.id) && (
+                        <li><strong>Employee #:</strong> {getEmployeeForUser(userToDelete.id)?.employee_number}</li>
+                      )}
+                    </ul>
+                  </AlertDescription>
+                </Alert>
+                <div className="bg-slate-50 p-3 rounded-lg border">
+                  <p className="text-sm text-slate-700 font-medium mb-2">What will be deleted:</p>
+                  <ul className="text-sm text-slate-600 space-y-1 ml-4 list-disc">
+                    <li>User account and login access</li>
+                    <li>Employee profile and records</li>
+                    <li>All time entries and timesheets</li>
+                    <li>Schedule assignments</li>
+                    <li>Availability settings</li>
+                    <li>Absence and correction requests</li>
+                  </ul>
+                </div>
+              </>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowDeleteDialog(false)}>
+              Cancel
+            </Button>
+            <Button 
+              variant="destructive" 
+              onClick={handleConfirmDelete}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              <Trash2 className="w-4 h-4 mr-2" />
+              Delete Permanently
             </Button>
           </DialogFooter>
         </DialogContent>
