@@ -43,33 +43,49 @@ export async function generateShiftsForAssignment(assignment, template, weeks, d
 }
 
 export async function regenerateShiftsForEmployee(employeeId) {
-  // Get active assignment
-  const assignments = await base44.entities.EmployeeScheduleAssignment.filter({ employee_id: employeeId });
-  const activeAssignment = assignments.find(a => !a.effective_end_date);
-  
-  if (!activeAssignment) return { created: 0 };
-  
-  const template = await base44.entities.ScheduleTemplate.filter({ id: activeAssignment.template_id });
-  const weeks = await base44.entities.ScheduleWeek.filter({ template_id: activeAssignment.template_id });
-  const days = await base44.entities.ScheduleDay.list();
-  
-  // Delete existing draft template shifts
-  const existingShifts = await base44.entities.ScheduledShift.filter({ 
-    employee_id: employeeId, 
-    status: 'draft',
-    source: 'template'
-  });
-  
-  for (const shift of existingShifts) {
-    await base44.entities.ScheduledShift.delete(shift.id);
+  try {
+    if (!employeeId) {
+      throw new Error('Employee ID is required');
+    }
+
+    // Get active assignment
+    const assignments = await base44.entities.EmployeeScheduleAssignment.filter({ employee_id: employeeId });
+    const activeAssignment = assignments.find(a => !a.effective_end_date);
+    
+    if (!activeAssignment) {
+      return { created: 0, message: 'No active schedule assignment found' };
+    }
+    
+    const template = await base44.entities.ScheduleTemplate.filter({ id: activeAssignment.template_id });
+    
+    if (!template || template.length === 0) {
+      throw new Error('Schedule template not found');
+    }
+    
+    const weeks = await base44.entities.ScheduleWeek.filter({ template_id: activeAssignment.template_id });
+    const days = await base44.entities.ScheduleDay.list();
+    
+    // Delete existing draft template shifts
+    const existingShifts = await base44.entities.ScheduledShift.filter({ 
+      employee_id: employeeId, 
+      status: 'draft',
+      source: 'template'
+    });
+    
+    for (const shift of existingShifts) {
+      await base44.entities.ScheduledShift.delete(shift.id);
+    }
+    
+    // Generate new shifts
+    const shifts = await generateShiftsForAssignment(activeAssignment, template[0], weeks, days);
+    
+    if (shifts.length > 0) {
+      await base44.entities.ScheduledShift.bulkCreate(shifts);
+    }
+    
+    return { created: shifts.length, success: true };
+  } catch (error) {
+    console.error('Failed to regenerate shifts:', error);
+    throw new Error(error?.message || 'Failed to regenerate shifts');
   }
-  
-  // Generate new shifts
-  const shifts = await generateShiftsForAssignment(activeAssignment, template[0], weeks, days);
-  
-  if (shifts.length > 0) {
-    await base44.entities.ScheduledShift.bulkCreate(shifts);
-  }
-  
-  return { created: shifts.length };
 }
