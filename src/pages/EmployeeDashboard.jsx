@@ -381,13 +381,7 @@ export default function EmployeeDashboard() {
                             {format(parseISO(req.start_date), 'MMM d')} - {format(parseISO(req.end_date), 'MMM d, yyyy')}
                           </p>
                         </div>
-                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                          req.status === 'approved' ? 'bg-emerald-100 text-emerald-700' :
-                          req.status === 'rejected' ? 'bg-red-100 text-red-700' :
-                          'bg-amber-100 text-amber-700'
-                        }`}>
-                          {req.status}
-                        </span>
+                        <StatusBadge status={req.status} />
                       </div>
                     </div>
                   ))}
@@ -409,13 +403,7 @@ export default function EmployeeDashboard() {
                             {format(parseISO(req.requested_date), 'MMM d, yyyy')}
                           </p>
                         </div>
-                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                          req.status === 'approved' ? 'bg-emerald-100 text-emerald-700' :
-                          req.status === 'rejected' ? 'bg-red-100 text-red-700' :
-                          'bg-amber-100 text-amber-700'
-                        }`}>
-                          {req.status}
-                        </span>
+                        <StatusBadge status={req.status} />
                       </div>
                     </div>
                   ))}
