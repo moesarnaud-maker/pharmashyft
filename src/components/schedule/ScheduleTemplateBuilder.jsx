@@ -142,11 +142,13 @@ export default function ScheduleTemplateBuilder({ template, onClose }) {
     }
   };
 
-  const updateDay = (weekIndex, dayIndex, updatedDay) => {
-    const newWeeks = [...weeks];
-    newWeeks[weekIndex].days[dayIndex] = updatedDay;
-    setWeeks(newWeeks);
-  };
+  const updateDay = useCallback((weekIndex, dayIndex, updatedDay) => {
+    setWeeks(prevWeeks => {
+      const newWeeks = [...prevWeeks];
+      newWeeks[weekIndex].days[dayIndex] = updatedDay;
+      return newWeeks;
+    });
+  }, []);
 
   const saveMutation = useMutation({
     mutationFn: async () => {
@@ -191,10 +193,25 @@ export default function ScheduleTemplateBuilder({ template, onClose }) {
       queryClient.invalidateQueries({ queryKey: ['scheduleTemplates'] });
       onClose();
     },
-    onError: () => {
-      toast.error('Failed to save template');
+    onError: (error) => {
+      console.error('Failed to save schedule template:', error);
+      toast.error(error?.message || 'Failed to save template. Please try again.');
     },
   });
+
+  if (isLoadingLocations) {
+    return <LoadingSpinner message="Loading locations..." />;
+  }
+
+  if (isLocationsError) {
+    return (
+      <ErrorDisplay 
+        error={locationsError} 
+        message="Failed to load locations"
+        onRetry={() => queryClient.invalidateQueries(['locations'])}
+      />
+    );
+  }
 
   return (
     <div className="space-y-6">
