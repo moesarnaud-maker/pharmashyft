@@ -181,6 +181,22 @@ export default function AdminDashboard() {
   const updateEmployeeMutation = useMutation({
     mutationFn: async (data) => {
       if (data.employee_id) {
+        // UPDATING EXISTING EMPLOYEE
+        
+        // Check if employee number already exists for this location (excluding current employee)
+        const duplicateEmployeeNumber = employees.find(e => 
+          e.id !== data.employee_id && 
+          e.main_location_id === data.main_location_id && 
+          e.employee_number === data.employee_number &&
+          e.status === 'active'
+        );
+        
+        if (duplicateEmployeeNumber) {
+          const location = locations.find(l => l.id === data.main_location_id);
+          toast.error(`Employee number "${data.employee_number}" already exists at ${location?.name || 'this location'}`);
+          throw new Error('Duplicate employee number');
+        }
+        
         await base44.entities.Employee.update(data.employee_id, {
           employee_number: data.employee_number,
           team_id: data.team_id,
@@ -191,10 +207,26 @@ export default function AdminDashboard() {
           pin_code: data.pin_code,
         });
       } else {
+        // CREATING NEW EMPLOYEE
+        
+        // Check if employee already exists for this user
         const existingEmployee = employees.find(e => e.user_id === data.user_id);
         if (existingEmployee) {
           toast.error('Employee record already exists for this user');
           throw new Error('Employee already exists');
+        }
+        
+        // Check if employee number already exists for this location
+        const duplicateEmployeeNumber = employees.find(e => 
+          e.main_location_id === data.main_location_id && 
+          e.employee_number === data.employee_number &&
+          e.status === 'active'
+        );
+        
+        if (duplicateEmployeeNumber) {
+          const location = locations.find(l => l.id === data.main_location_id);
+          toast.error(`Employee number "${data.employee_number}" already exists at ${location?.name || 'this location'}`);
+          throw new Error('Duplicate employee number');
         }
         
         await base44.entities.Employee.create({
@@ -215,7 +247,7 @@ export default function AdminDashboard() {
       toast.success('Employee profile updated successfully');
     },
     onError: (error) => {
-      if (error.message !== 'Employee already exists') {
+      if (error.message !== 'Employee already exists' && error.message !== 'Duplicate employee number') {
         toast.error('Failed to update employee profile');
       }
     },
