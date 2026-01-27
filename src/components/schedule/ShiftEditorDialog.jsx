@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { Trash2, AlertTriangle, CheckCircle, XCircle } from 'lucide-react';
+import { formatUserName } from '@/components/utils/helpers';
 
 export default function ShiftEditorDialog({ 
   open, 
@@ -105,7 +106,8 @@ export default function ShiftEditorDialog({
       const hasOverlap = newStart < existingEnd && newEnd > existingStart;
 
       if (hasOverlap) {
-        const empName = users.find(u => u.id === employees.find(e => e.id === formData.employee_id)?.user_id)?.full_name || 'Employee';
+        const empUser = users.find(u => u.id === employees.find(e => e.id === formData.employee_id)?.user_id);
+        const empName = formatUserName(empUser);
         return {
           type: 'overlap',
           message: `${empName} already has a shift from ${existingShift.start_time} to ${existingShift.end_time} on this date`,
@@ -186,7 +188,7 @@ export default function ShiftEditorDialog({
       await base44.entities.AuditLog.create({
         actor_id: currentUser.id,
         actor_email: currentUser.email,
-        actor_name: currentUser.full_name,
+        actor_name: formatUserName(currentUser),
         action: shift ? 'update' : 'create',
         entity_type: 'ScheduledShift',
         entity_id: shift?.id || 'new',
@@ -208,7 +210,7 @@ export default function ShiftEditorDialog({
       await base44.entities.AuditLog.create({
         actor_id: currentUser.id,
         actor_email: currentUser.email,
-        actor_name: currentUser.full_name,
+        actor_name: formatUserName(currentUser),
         action: 'delete',
         entity_type: 'ScheduledShift',
         entity_id: shift.id,
@@ -265,7 +267,7 @@ export default function ShiftEditorDialog({
               <SelectContent>
                 {eligibleEmployees.filter(e => e.status === 'active').map(emp => (
                   <SelectItem key={emp.id} value={emp.id}>
-                    {users.find(u => u.id === emp.user_id)?.full_name || emp.employee_number || 'Unknown'}
+                    {formatUserName(users.find(u => u.id === emp.user_id)) || emp.employee_number}
                   </SelectItem>
                 ))}
               </SelectContent>

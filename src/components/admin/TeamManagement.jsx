@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Plus, Users, Pencil, Trash2 } from 'lucide-react';
+import { formatUserName } from '@/components/utils/helpers';
 
 export default function TeamManagement({ 
   teams = [], 
@@ -54,7 +55,7 @@ export default function TeamManagement({
 
   const getManagerName = (managerId) => {
     const user = users.find(u => u.id === managerId);
-    return user?.full_name || 'Not assigned';
+    return user ? formatUserName(user) : 'Not assigned';
   };
 
   return (
@@ -138,7 +139,7 @@ export default function TeamManagement({
                 </SelectTrigger>
                 <SelectContent>
                   {users.filter(u => u.role === 'admin').map(user => (
-                    <SelectItem key={user.id} value={user.id}>{user.full_name || user.email}</SelectItem>
+                    <SelectItem key={user.id} value={user.id}>{formatUserName(user)}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>

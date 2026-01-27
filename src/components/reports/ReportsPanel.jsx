@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line } from 'recharts';
 import { format, startOfWeek, addDays, subWeeks, parseISO } from 'date-fns';
 import { Clock, TrendingUp, AlertTriangle, Users, ChevronLeft, ChevronRight } from 'lucide-react';
+import { formatUserName } from '@/components/utils/helpers';
 
 export default function ReportsPanel({ 
   employees = [], 
@@ -29,7 +30,7 @@ export default function ReportsPanel({
   const getEmployeeName = (empId) => {
     const emp = employees.find(e => e.id === empId);
     const u = users.find(u => u.id === emp?.user_id);
-    return u?.full_name || 'Unknown';
+    return formatUserName(u);
   };
 
   const getTeamName = (teamId) => teams.find(t => t.id === teamId)?.name || 'No Team';

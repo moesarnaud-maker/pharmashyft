@@ -8,6 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { Users, Clock, CheckCircle, AlertCircle, Calendar, ChevronRight } from 'lucide-react';
+import { formatUserName, getUserInitials } from '@/components/utils/helpers';
 
 import StatsCard from '@/components/common/StatsCard';
 import ApprovalCard from '@/components/common/ApprovalCard';
@@ -76,7 +77,7 @@ export default function ManagerDashboard() {
   const getEmployeeName = (employeeId) => {
     const emp = employees.find(e => e.id === employeeId);
     const u = users.find(u => u.id === emp?.user_id);
-    return u?.full_name || 'Unknown';
+    return formatUserName(u);
   };
 
   const approveTimesheetMutation = useMutation({
@@ -89,7 +90,7 @@ export default function ManagerDashboard() {
       await base44.entities.AuditLog.create({
         actor_id: user?.id,
         actor_email: user?.email,
-        actor_name: user?.full_name,
+        actor_name: formatUserName(user),
         action: 'approve',
         entity_type: 'Timesheet',
         entity_id: id,
@@ -110,7 +111,7 @@ export default function ManagerDashboard() {
       await base44.entities.AuditLog.create({
         actor_id: user?.id,
         actor_email: user?.email,
-        actor_name: user?.full_name,
+        actor_name: formatUserName(user),
         action: 'reject',
         entity_type: 'Timesheet',
         entity_id: id,
@@ -367,10 +368,10 @@ export default function ManagerDashboard() {
                       <div key={emp.id} className="py-4 flex items-center justify-between">
                         <div className="flex items-center gap-4">
                           <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center text-white font-medium">
-                            {u?.full_name?.charAt(0) || '?'}
+                            {getUserInitials(u)}
                           </div>
                           <div>
-                            <div className="font-medium text-slate-800">{u?.full_name || 'Unknown'}</div>
+                            <div className="font-medium text-slate-800">{formatUserName(u)}</div>
                             <div className="text-sm text-slate-500">{emp.employee_number}</div>
                           </div>
                         </div>

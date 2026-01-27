@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { Save, MapPin, AlertTriangle } from 'lucide-react';
+import { formatUserName } from '@/components/utils/helpers';
 
 export default function EmployeeDetailsTab({ employee, user, teams, schedules, onUpdate, onClose, allEmployees = [] }) {
   const queryClient = useQueryClient();
@@ -258,7 +259,7 @@ export default function EmployeeDetailsTab({ employee, user, teams, schedules, o
       {isNewEmployee && (
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
           <p className="text-sm text-blue-900">
-            <strong>Creating new employee record</strong> for {user.first_name} {user.last_name || user.full_name || user.email}. Fill in the required fields below.
+            <strong>Creating new employee record</strong> for {formatUserName(user)}. Fill in the required fields below.
           </p>
         </div>
       )}

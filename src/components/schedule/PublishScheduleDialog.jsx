@@ -7,6 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { Send } from 'lucide-react';
+import { formatUserName } from '@/components/utils/helpers';
 
 export default function PublishScheduleDialog({ 
   open, 
@@ -42,7 +43,7 @@ export default function PublishScheduleDialog({
       await base44.entities.AuditLog.create({
         actor_id: currentUser.id,
         actor_email: currentUser.email,
-        actor_name: currentUser.full_name,
+        actor_name: formatUserName(currentUser),
         action: 'approve',
         entity_type: 'SchedulePublishBatch',
         entity_id: batch.id,

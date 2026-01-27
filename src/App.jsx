@@ -3,10 +3,11 @@ import { QueryClientProvider } from '@tanstack/react-query'
 import { queryClientInstance } from '@/lib/query-client'
 import NavigationTracker from '@/lib/NavigationTracker'
 import { pagesConfig } from './pages.config'
-import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
+import { BrowserRouter as Router, Route, Routes, Navigate, useLocation } from 'react-router-dom';
 import PageNotFound from './lib/PageNotFound';
 import { AuthProvider, useAuth } from '@/lib/AuthContext';
 import UserNotRegisteredError from '@/components/UserNotRegisteredError';
+import ProfileSetup from './pages/ProfileSetup';
 
 const { Pages, Layout, mainPage } = pagesConfig;
 const mainPageKey = mainPage ?? Object.keys(Pages)[0];
@@ -17,7 +18,8 @@ const LayoutWrapper = ({ children, currentPageName }) => Layout ?
   : <>{children}</>;
 
 const AuthenticatedApp = () => {
-  const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
+  const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin, profileCompleted, user, employee, refreshUserData } = useAuth();
+  const location = useLocation();
 
   // Show loading spinner while checking app public settings or auth
   if (isLoadingPublicSettings || isLoadingAuth) {
@@ -39,6 +41,19 @@ const AuthenticatedApp = () => {
     }
   }
 
+  // If profile is not completed and user is authenticated, show ProfileSetup
+  if (user && !profileCompleted) {
+    return (
+      <ProfileSetup
+        user={user}
+        employee={employee}
+        onComplete={() => {
+          refreshUserData();
+        }}
+      />
+    );
+  }
+
   // Render the main app
   return (
     <Routes>
@@ -47,7 +62,7 @@ const AuthenticatedApp = () => {
           <MainPage />
         </LayoutWrapper>
       } />
-      {Object.entries(Pages).map(([path, Page]) => (
+      {Object.entries(Pages).filter(([path]) => path !== 'ProfileSetup').map(([path, Page]) => (
         <Route
           key={path}
           path={`/${path}`}
@@ -58,6 +73,8 @@ const AuthenticatedApp = () => {
           }
         />
       ))}
+      {/* ProfileSetup route - redirect to home if profile is already completed */}
+      <Route path="/ProfileSetup" element={<Navigate to="/" replace />} />
       <Route path="*" element={<PageNotFound />} />
     </Routes>
   );

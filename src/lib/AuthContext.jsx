@@ -7,11 +7,13 @@ const AuthContext = createContext();
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
+  const [employee, setEmployee] = useState(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoadingAuth, setIsLoadingAuth] = useState(true);
   const [isLoadingPublicSettings, setIsLoadingPublicSettings] = useState(true);
   const [authError, setAuthError] = useState(null);
   const [appPublicSettings, setAppPublicSettings] = useState(null); // Contains only { id, public_settings }
+  const [profileCompleted, setProfileCompleted] = useState(true); // Assume true until we know otherwise
 
   useEffect(() => {
     checkAppState();
@@ -94,12 +96,31 @@ export const AuthProvider = ({ children }) => {
       const currentUser = await base44.auth.me();
       setUser(currentUser);
       setIsAuthenticated(true);
+
+      // Fetch employee data to check profile completion
+      try {
+        const employees = await base44.entities.Employee.filter({ user_id: currentUser.id });
+        if (employees.length > 0) {
+          setEmployee(employees[0]);
+          // Check if profile is completed (user has first_name set indicates profile setup done)
+          const isComplete = currentUser.profile_completed === true;
+          setProfileCompleted(isComplete);
+        } else {
+          // No employee record yet, profile not completed
+          setProfileCompleted(false);
+        }
+      } catch (empError) {
+        console.error('Error fetching employee data:', empError);
+        // If we can't fetch employee, assume profile needs setup
+        setProfileCompleted(false);
+      }
+
       setIsLoadingAuth(false);
     } catch (error) {
       console.error('User auth check failed:', error);
       setIsLoadingAuth(false);
       setIsAuthenticated(false);
-      
+
       // If user auth fails, it might be an expired token
       if (error.status === 401 || error.status === 403) {
         setAuthError({
@@ -128,17 +149,36 @@ export const AuthProvider = ({ children }) => {
     base44.auth.redirectToLogin(window.location.href);
   };
 
+  // Function to refresh user and employee data (called after profile setup)
+  const refreshUserData = async () => {
+    try {
+      const currentUser = await base44.auth.me();
+      setUser(currentUser);
+
+      const employees = await base44.entities.Employee.filter({ user_id: currentUser.id });
+      if (employees.length > 0) {
+        setEmployee(employees[0]);
+      }
+      setProfileCompleted(currentUser.profile_completed === true);
+    } catch (error) {
+      console.error('Error refreshing user data:', error);
+    }
+  };
+
   return (
-    <AuthContext.Provider value={{ 
-      user, 
-      isAuthenticated, 
+    <AuthContext.Provider value={{
+      user,
+      employee,
+      isAuthenticated,
       isLoadingAuth,
       isLoadingPublicSettings,
       authError,
       appPublicSettings,
+      profileCompleted,
       logout,
       navigateToLogin,
-      checkAppState
+      checkAppState,
+      refreshUserData
     }}>
       {children}
     </AuthContext.Provider>

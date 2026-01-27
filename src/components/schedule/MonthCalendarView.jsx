@@ -12,6 +12,7 @@ import { format, startOfMonth, endOfMonth, eachDayOfInterval, addMonths, subMont
 import ShiftEditorDialog from './ShiftEditorDialog';
 import PublishScheduleDialog from './PublishScheduleDialog';
 import LocationSelector from './LocationSelector';
+import { formatUserName } from '@/components/utils/helpers';
 
 export default function MonthCalendarView({
   employees = [],
@@ -47,11 +48,7 @@ export default function MonthCalendarView({
   const getEmployeeName = (empId) => {
     const emp = employees.find(e => e.id === empId);
     const user = users.find(u => u.id === emp?.user_id);
-    const fullName = user?.full_name || 'Unknown';
-    // Capitalize each word
-    return fullName.split(' ').map(word => 
-      word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
-    ).join(' ');
+    return formatUserName(user);
   };
 
   const getLocationName = (locId) => locations.find(l => l.id === locId)?.name || '';
