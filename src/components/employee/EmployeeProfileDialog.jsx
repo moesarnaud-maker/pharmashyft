@@ -45,19 +45,19 @@ export default function EmployeeProfileDialog({
 
   const { data: timeEntries = [] } = useQuery({
     queryKey: ['timeEntries', employee?.id],
-    queryFn: () => base44.entities.TimeEntry.filter({ employee_id: employee.id }),
+    queryFn: () => base44.entities.TimeEntry.filter({ employee_id: employee?.id }),
     enabled: !!employee?.id,
   });
 
   const { data: timesheets = [] } = useQuery({
     queryKey: ['timesheets', employee?.id],
-    queryFn: () => base44.entities.Timesheet.filter({ employee_id: employee.id }),
+    queryFn: () => base44.entities.Timesheet.filter({ employee_id: employee?.id }),
     enabled: !!employee?.id,
   });
 
   const { data: absenceRequests = [] } = useQuery({
     queryKey: ['absenceRequests', employee?.id],
-    queryFn: () => base44.entities.AbsenceRequest.filter({ employee_id: employee.id }),
+    queryFn: () => base44.entities.AbsenceRequest.filter({ employee_id: employee?.id }),
     enabled: !!employee?.id,
   });
 
