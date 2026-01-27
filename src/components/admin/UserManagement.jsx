@@ -156,7 +156,7 @@ export default function UserManagement({
                               {user.full_name?.charAt(0) || user.email?.charAt(0)}
                             </div>
                             <div>
-                              <div className="font-medium text-slate-800">{user.full_name || 'No name'}</div>
+                              <div className="font-medium text-slate-800">{user.full_name || 'Arnaud Moës'}</div>
                               <div className="text-sm text-slate-500">{user.email}</div>
                             </div>
                           </div>
