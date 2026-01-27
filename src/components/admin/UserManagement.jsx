@@ -41,6 +41,8 @@ export default function UserManagement({
   const pendingInvitations = users.filter(u => u.status === 'pending_invitation');
 
   const filteredActiveUsers = activeUsers.filter(u => 
+    u.first_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    u.last_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     u.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     u.email?.toLowerCase().includes(searchTerm.toLowerCase())
   );
@@ -156,7 +158,11 @@ export default function UserManagement({
                               {user.full_name?.charAt(0) || user.email?.charAt(0)}
                             </div>
                             <div>
-                              <div className="font-medium text-slate-800">{user.full_name || 'No name'}</div>
+                              <div className="font-medium text-slate-800">
+                                {user.first_name || user.last_name 
+                                  ? `${user.first_name || ''} ${user.last_name || ''}`.trim()
+                                  : user.full_name || 'No name'}
+                              </div>
                               <div className="text-sm text-slate-500">{user.email}</div>
                             </div>
                           </div>
@@ -356,7 +362,9 @@ export default function UserManagement({
                   <AlertDescription>
                     <strong>Warning:</strong> You are about to delete:
                     <ul className="mt-2 ml-4 list-disc">
-                      <li><strong>User:</strong> {userToDelete.full_name || userToDelete.email}</li>
+                      <li><strong>User:</strong> {userToDelete.first_name || userToDelete.last_name 
+                        ? `${userToDelete.first_name || ''} ${userToDelete.last_name || ''}`.trim()
+                        : userToDelete.full_name || userToDelete.email}</li>
                       <li><strong>Email:</strong> {userToDelete.email}</li>
                       {getEmployeeForUser(userToDelete.id) && (
                         <li><strong>Employee #:</strong> {getEmployeeForUser(userToDelete.id)?.employee_number}</li>
