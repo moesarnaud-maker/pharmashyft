@@ -4,6 +4,7 @@ import Home from './pages/Home';
 import Kiosk from './pages/Kiosk';
 import ManagerDashboard from './pages/ManagerDashboard';
 import ScheduleCalendar from './pages/ScheduleCalendar';
+import ProfileSetup from './pages/ProfileSetup';
 import __Layout from './Layout.jsx';
 
 
@@ -14,6 +15,7 @@ export const PAGES = {
     "Kiosk": Kiosk,
     "ManagerDashboard": ManagerDashboard,
     "ScheduleCalendar": ScheduleCalendar,
+    "ProfileSetup": ProfileSetup,
 }
 
 export const pagesConfig = {
