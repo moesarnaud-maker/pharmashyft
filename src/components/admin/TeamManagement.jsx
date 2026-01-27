@@ -138,7 +138,7 @@ export default function TeamManagement({
                   <SelectValue placeholder="Select manager..." />
                 </SelectTrigger>
                 <SelectContent>
-                  {users.filter(u => u.role === 'admin').map(user => (
+                  {users.filter(u => u.role === 'admin' || u.role === 'manager').map(user => (
                     <SelectItem key={user.id} value={user.id}>{formatUserName(user)}</SelectItem>
                   ))}
                 </SelectContent>

@@ -116,7 +116,8 @@ export default function Home() {
 
   // Determine user's role and redirect accordingly
   const isAdmin = user.role === 'admin';
-  const isManager = employee?.manager_id === null && isAdmin; // Simplified manager check
+  const isManager = user.role === 'manager';
+  const canAccessManagerDashboard = isAdmin || isManager;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
@@ -147,7 +148,7 @@ export default function Home() {
             </Card>
           </Link>
 
-          {isAdmin && (
+          {canAccessManagerDashboard && (
             <Link to={createPageUrl('ManagerDashboard')}>
               <Card className="border-0 shadow-lg hover:shadow-xl transition-all cursor-pointer group">
                 <CardContent className="p-6">
