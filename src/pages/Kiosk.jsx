@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { Clock, Play, Square, Coffee, Loader2, Delete, CheckCircle, XCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { formatUserName } from '@/components/utils/helpers';
 
 export default function Kiosk() {
   const [currentTime, setCurrentTime] = useState(new Date());
@@ -123,7 +124,7 @@ export default function Kiosk() {
 
   const getEmployeeName = () => {
     const u = users.find(u => u.id === employee?.user_id);
-    return u?.full_name || 'Employee';
+    return formatUserName(u) || 'Employee';
   };
 
   const confirmationMessages = {

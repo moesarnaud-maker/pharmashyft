@@ -4,6 +4,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { Users, Settings, FileText, Building, Download, Shield, BarChart2, Calendar, MapPin } from 'lucide-react';
+import { formatUserName } from '@/components/utils/helpers';
 
 import StatsCard from '@/components/common/StatsCard';
 import UserManagement from '@/components/admin/UserManagement';
@@ -289,7 +290,7 @@ export default function AdminDashboard() {
     await base44.entities.AuditLog.create({
       actor_id: user?.id,
       actor_email: user?.email,
-      actor_name: user?.full_name,
+      actor_name: formatUserName(user),
       action: 'export',
       entity_type: 'Timesheet',
       entity_description: `Exported ${exportInfo.type} data with ${exportInfo.rowCount} rows`,
