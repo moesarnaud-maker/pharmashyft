@@ -46,7 +46,7 @@ export default function Layout({ children, currentPageName }) {
                 <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-600 to-purple-600 flex items-center justify-center">
                   <Clock className="w-4 h-4 text-white" />
                 </div>
-                <span className="font-semibold text-slate-800">TimeTrack</span>
+                <span className="font-semibold text-slate-800">PharmaShyft</span>
               </Link>
 
               {/* Desktop Navigation */}
