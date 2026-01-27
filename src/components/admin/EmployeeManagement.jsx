@@ -11,6 +11,7 @@ import { Search, MoreHorizontal, Users, Trash2, AlertTriangle, Edit } from 'luci
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { toast } from "sonner";
 import EmployeeProfileDialog from '@/components/employee/EmployeeProfileDialog';
+import { formatUserName, getUserInitials } from '@/components/utils/helpers';
 
 export default function EmployeeManagement({ 
   employees = [],
@@ -33,8 +34,9 @@ export default function EmployeeManagement({
   const filteredEmployees = employees.filter(emp => {
     const user = getUserForEmployee(emp);
     const searchLower = searchTerm.toLowerCase();
+    const displayName = user ? formatUserName(user).toLowerCase() : '';
     return (
-      user?.full_name?.toLowerCase().includes(searchLower) ||
+      displayName.includes(searchLower) ||
       user?.email?.toLowerCase().includes(searchLower) ||
       emp.employee_number?.toLowerCase().includes(searchLower)
     );
@@ -139,16 +141,18 @@ export default function EmployeeManagement({
             <TableBody>
               {filteredEmployees.map(emp => {
                 const user = getUserForEmployee(emp);
+                const displayName = user ? formatUserName(user) : 'No name';
+                const initials = user ? getUserInitials(user) : '?';
                 return (
                   <TableRow key={emp.id}>
                     <TableCell>
                       <div className="flex items-center gap-3">
                         <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center text-white font-medium">
-                          {user?.full_name?.charAt(0) || user?.email?.charAt(0) || '?'}
+                          {initials}
                         </div>
                         <div>
                           <div className="font-medium text-slate-800">
-                            {user?.full_name || 'No name'}
+                            {displayName}
                           </div>
                           <div className="text-sm text-slate-500">{user?.email || 'No email'}</div>
                         </div>
@@ -231,11 +235,11 @@ export default function EmployeeManagement({
             <div className="bg-slate-50 rounded-lg p-4 space-y-2">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center text-white font-medium">
-                  {getUserForEmployee(employeeToDelete)?.full_name?.charAt(0) || '?'}
+                  {getUserForEmployee(employeeToDelete) ? getUserInitials(getUserForEmployee(employeeToDelete)) : '?'}
                 </div>
                 <div>
                   <div className="font-medium">
-                    {getUserForEmployee(employeeToDelete)?.full_name || 'Unknown'}
+                    {getUserForEmployee(employeeToDelete) ? formatUserName(getUserForEmployee(employeeToDelete)) : 'Unknown'}
                   </div>
                   <div className="text-sm text-slate-500">
                     {employeeToDelete.employee_number || 'No employee number'}

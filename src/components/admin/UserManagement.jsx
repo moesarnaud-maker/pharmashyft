@@ -12,6 +12,7 @@ import { UserPlus, Search, MoreHorizontal, Mail, Shield, Users, Clock, Send, X, 
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import EmployeeProfileDialog from '@/components/employee/EmployeeProfileDialog';
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { formatUserName, getUserInitials } from '@/components/utils/helpers';
 
 export default function UserManagement({ 
   users = [], 
@@ -40,12 +41,14 @@ export default function UserManagement({
   const activeUsers = users.filter(u => u.status === 'active' || !u.status);
   const pendingInvitations = users.filter(u => u.status === 'pending_invitation');
 
-  const filteredActiveUsers = activeUsers.filter(u => 
-    u.first_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    u.last_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    u.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    u.email?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredActiveUsers = activeUsers.filter(u => {
+    const searchLower = searchTerm.toLowerCase();
+    const displayName = formatUserName(u).toLowerCase();
+    return (
+      displayName.includes(searchLower) ||
+      u.email?.toLowerCase().includes(searchLower)
+    );
+  });
 
   const filteredPendingInvitations = pendingInvitations.filter(u => 
     u.email?.toLowerCase().includes(searchTerm.toLowerCase())
@@ -150,18 +153,18 @@ export default function UserManagement({
                 <TableBody>
                   {filteredActiveUsers.map(user => {
                     const emp = getEmployeeForUser(user.id);
+                    const displayName = formatUserName(user);
+                    const initials = getUserInitials(user);
                     return (
                       <TableRow key={user.id}>
                         <TableCell>
                           <div className="flex items-center gap-3">
                             <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center text-white font-medium">
-                              {user.full_name?.charAt(0) || user.email?.charAt(0)}
+                              {initials}
                             </div>
                             <div>
                               <div className="font-medium text-slate-800">
-                                {user.first_name || user.last_name 
-                                  ? `${user.first_name || ''} ${user.last_name || ''}`.trim()
-                                  : user.full_name || 'No name'}
+                                {displayName}
                               </div>
                               <div className="text-sm text-slate-500">{user.email}</div>
                             </div>
@@ -362,9 +365,7 @@ export default function UserManagement({
                   <AlertDescription>
                     <strong>Warning:</strong> You are about to delete:
                     <ul className="mt-2 ml-4 list-disc">
-                      <li><strong>User:</strong> {userToDelete.first_name || userToDelete.last_name 
-                        ? `${userToDelete.first_name || ''} ${userToDelete.last_name || ''}`.trim()
-                        : userToDelete.full_name || userToDelete.email}</li>
+                      <li><strong>User:</strong> {formatUserName(userToDelete)}</li>
                       <li><strong>Email:</strong> {userToDelete.email}</li>
                       {getEmployeeForUser(userToDelete.id) && (
                         <li><strong>Employee #:</strong> {getEmployeeForUser(userToDelete.id)?.employee_number}</li>
@@ -410,6 +411,7 @@ export default function UserManagement({
         onUpdateEmployee={onUpdateEmployee}
         teams={teams}
         schedules={schedules}
+        allEmployees={employees}
       />
     </div>
   );

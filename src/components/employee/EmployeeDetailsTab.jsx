@@ -8,11 +8,11 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Save, MapPin } from 'lucide-react';
+import { Save, MapPin, AlertTriangle } from 'lucide-react';
 
-export default function EmployeeDetailsTab({ employee, user, teams, schedules, onUpdate }) {
+export default function EmployeeDetailsTab({ employee, user, teams, schedules, onUpdate, onClose, allEmployees = [] }) {
   const queryClient = useQueryClient();
-  const isNewEmployee = !employee; // Check if this is a new employee
+  const isNewEmployee = !employee;
   
   const { data: locations = [] } = useQuery({
     queryKey: ['locations'],
@@ -27,6 +27,14 @@ export default function EmployeeDetailsTab({ employee, user, teams, schedules, o
     enabled: !!employee?.id,
   });
 
+  const { data: fetchedEmployees = [] } = useQuery({
+    queryKey: ['allEmployees'],
+    queryFn: () => base44.entities.Employee.list(),
+    enabled: allEmployees.length === 0,
+  });
+
+  const employees = allEmployees.length > 0 ? allEmployees : fetchedEmployees;
+
   const [formData, setFormData] = useState({
     employee_number: employee?.employee_number || '',
     team_id: employee?.team_id || '',
@@ -39,6 +47,7 @@ export default function EmployeeDetailsTab({ employee, user, teams, schedules, o
   });
 
   const [eligibleLocationIds, setEligibleLocationIds] = useState([]);
+  const [employeeNumberError, setEmployeeNumberError] = useState('');
 
   useEffect(() => {
     if (employeeLocations.length > 0) {
@@ -64,6 +73,27 @@ export default function EmployeeDetailsTab({ employee, user, teams, schedules, o
     }
   }, [employee]);
 
+  useEffect(() => {
+    if (!formData.employee_number || !formData.main_location_id) {
+      setEmployeeNumberError('');
+      return;
+    }
+
+    const duplicate = employees.find(e => 
+      e.id !== employee?.id &&
+      e.main_location_id === formData.main_location_id && 
+      e.employee_number === formData.employee_number &&
+      e.status === 'active'
+    );
+
+    if (duplicate) {
+      const location = locations.find(l => l.id === formData.main_location_id);
+      setEmployeeNumberError(`Employee number "${formData.employee_number}" already exists at ${location?.name || 'this location'}`);
+    } else {
+      setEmployeeNumberError('');
+    }
+  }, [formData.employee_number, formData.main_location_id, employees, employee?.id, locations]);
+
   const toggleLocation = (locationId) => {
     setEligibleLocationIds(prev =>
       prev.includes(locationId)
@@ -74,7 +104,6 @@ export default function EmployeeDetailsTab({ employee, user, teams, schedules, o
 
   const saveMutation = useMutation({
     mutationFn: async () => {
-      // Validation
       if (!formData.employee_number) {
         throw new Error('Employee number is required');
       }
@@ -82,7 +111,18 @@ export default function EmployeeDetailsTab({ employee, user, teams, schedules, o
         throw new Error('Main location is required');
       }
 
-      // Ensure main location is in eligible locations
+      const duplicate = employees.find(e => 
+        e.id !== employee?.id &&
+        e.main_location_id === formData.main_location_id && 
+        e.employee_number === formData.employee_number &&
+        e.status === 'active'
+      );
+
+      if (duplicate) {
+        const location = locations.find(l => l.id === formData.main_location_id);
+        throw new Error(`Employee number "${formData.employee_number}" already exists at ${location?.name || 'this location'}`);
+      }
+
       const finalEligibleIds = eligibleLocationIds.includes(formData.main_location_id)
         ? eligibleLocationIds
         : [...eligibleLocationIds, formData.main_location_id];
@@ -93,9 +133,12 @@ export default function EmployeeDetailsTab({ employee, user, teams, schedules, o
 
       let employeeId;
 
-      // CREATE or UPDATE Employee record
       if (isNewEmployee) {
-        // CREATE new employee
+        const existingEmployee = employees.find(e => e.user_id === user.id);
+        if (existingEmployee) {
+          throw new Error('An employee record already exists for this user');
+        }
+
         const newEmployee = await base44.entities.Employee.create({
           user_id: user.id,
           employee_number: formData.employee_number,
@@ -109,7 +152,6 @@ export default function EmployeeDetailsTab({ employee, user, teams, schedules, o
         });
         employeeId = newEmployee.id;
       } else {
-        // UPDATE existing employee
         await base44.entities.Employee.update(employee.id, {
           employee_number: formData.employee_number,
           team_id: formData.team_id,
@@ -123,9 +165,7 @@ export default function EmployeeDetailsTab({ employee, user, teams, schedules, o
         employeeId = employee.id;
       }
 
-      // Manage EmployeeLocation records
       if (isNewEmployee) {
-        // For new employees, just create all eligible locations
         for (const locId of finalEligibleIds) {
           await base44.entities.EmployeeLocation.create({
             employee_id: employeeId,
@@ -134,14 +174,12 @@ export default function EmployeeDetailsTab({ employee, user, teams, schedules, o
           });
         }
       } else {
-        // For existing employees, sync the locations
         const currentEmployeeLocations = await base44.entities.EmployeeLocation.filter({ 
           employee_id: employeeId 
         });
         
         const currentLocationIds = currentEmployeeLocations.map(el => el.location_id);
         
-        // Delete removed locations
         const toRemove = currentEmployeeLocations.filter(el => 
           !finalEligibleIds.includes(el.location_id)
         );
@@ -150,7 +188,6 @@ export default function EmployeeDetailsTab({ employee, user, teams, schedules, o
           await base44.entities.EmployeeLocation.delete(el.id);
         }
 
-        // Add new eligible locations
         const toAdd = finalEligibleIds.filter(locId => 
           !currentLocationIds.includes(locId)
         );
@@ -164,15 +201,16 @@ export default function EmployeeDetailsTab({ employee, user, teams, schedules, o
         }
       }
 
-      return { finalEligibleIds, employeeId };
+      return { finalEligibleIds, employeeId, isNew: isNewEmployee };
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['employees'] });
       queryClient.invalidateQueries({ queryKey: ['employeeLocations'] });
+      queryClient.invalidateQueries({ queryKey: ['allEmployees'] });
       
       setEligibleLocationIds(data.finalEligibleIds);
       
-      toast.success(isNewEmployee ? 'Employee created successfully' : 'Employee updated successfully');
+      toast.success(data.isNew ? 'Employee created successfully' : 'Employee updated successfully');
       
       if (onUpdate) {
         onUpdate({
@@ -180,6 +218,10 @@ export default function EmployeeDetailsTab({ employee, user, teams, schedules, o
           employee_id: data.employeeId,
           ...formData,
         });
+      }
+
+      if (data.isNew && onClose) {
+        onClose();
       }
     },
     onError: (error) => {
@@ -189,13 +231,17 @@ export default function EmployeeDetailsTab({ employee, user, teams, schedules, o
   });
 
   const handleSave = () => {
-    // Validation
     if (!formData.employee_number) {
       toast.error('Employee number is required');
       return;
     }
     if (!formData.main_location_id) {
       toast.error('Main location is required');
+      return;
+    }
+
+    if (employeeNumberError) {
+      toast.error(employeeNumberError);
       return;
     }
 
@@ -212,7 +258,7 @@ export default function EmployeeDetailsTab({ employee, user, teams, schedules, o
       {isNewEmployee && (
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
           <p className="text-sm text-blue-900">
-            <strong>Creating new employee record</strong> for {user.full_name}. Fill in the required fields below.
+            <strong>Creating new employee record</strong> for {user.first_name} {user.last_name || user.full_name || user.email}. Fill in the required fields below.
           </p>
         </div>
       )}
@@ -229,7 +275,17 @@ export default function EmployeeDetailsTab({ employee, user, teams, schedules, o
                 placeholder="EMP001"
                 value={formData.employee_number}
                 onChange={(e) => setFormData({ ...formData, employee_number: e.target.value })}
+                className={employeeNumberError ? 'border-red-500' : ''}
               />
+              {employeeNumberError && (
+                <p className="text-sm text-red-600 mt-1 flex items-center gap-1">
+                  <AlertTriangle className="w-4 h-4" />
+                  {employeeNumberError}
+                </p>
+              )}
+              <p className="text-xs text-slate-500 mt-1">
+                Must be unique per main location
+              </p>
             </div>
             <div>
               <Label>PIN Code (Kiosk)</Label>
@@ -343,7 +399,7 @@ export default function EmployeeDetailsTab({ employee, user, teams, schedules, o
           <Button 
             onClick={handleSave} 
             className="w-full"
-            disabled={saveMutation.isPending}
+            disabled={saveMutation.isPending || !!employeeNumberError}
           >
             <Save className="w-4 h-4 mr-2" />
             {saveMutation.isPending ? 'Saving...' : isNewEmployee ? 'Create Employee' : 'Save Changes'}

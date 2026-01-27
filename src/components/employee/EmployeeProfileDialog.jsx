@@ -4,6 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { User, Calendar, Clock, FileText, Briefcase } from 'lucide-react';
+import { formatUserName, getUserInitials } from '@/components/utils/helpers';
 import EmployeeDetailsTab from './EmployeeDetailsTab';
 import EmployeeScheduleTab from './EmployeeScheduleTab';
 import EmployeeAvailabilityTab from './EmployeeAvailabilityTab';
@@ -18,7 +19,8 @@ export default function EmployeeProfileDialog({
   onClose,
   onUpdateEmployee,
   teams = [],
-  schedules = []
+  schedules = [],
+  allEmployees = []
 }) {
   const [activeTab, setActiveTab] = useState('details');
 
@@ -114,6 +116,8 @@ export default function EmployeeProfileDialog({
                 teams={teams}
                 schedules={schedules}
                 onUpdate={onUpdateEmployee}
+                onClose={onClose}
+                allEmployees={allEmployees}
               />
             </TabsContent>
 
