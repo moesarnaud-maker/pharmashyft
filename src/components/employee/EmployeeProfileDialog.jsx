@@ -65,16 +65,19 @@ export default function EmployeeProfileDialog({
 
   if (!user) return null;
 
+  const displayName = formatUserName(user);
+  const initials = getUserInitials(user);
+
   return (
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent className="max-w-6xl max-h-[90vh] overflow-hidden flex flex-col">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center text-white font-medium">
-              {user.full_name?.charAt(0)}
+              {initials}
             </div>
             <div>
-              <div>{user.full_name}</div>
+              <div>{displayName}</div>
               <div className="text-sm font-normal text-slate-500">{user.email}</div>
             </div>
           </DialogTitle>
@@ -124,7 +127,7 @@ export default function EmployeeProfileDialog({
             <TabsContent value="schedule" className="mt-0">
               <EmployeeScheduleTab
                 employee={employee}
-                assignments={scheduleAssignments.filter(a => a.employee_id === employee.id)}
+                assignments={scheduleAssignments.filter(a => a.employee_id === employee?.id)}
                 templates={scheduleTemplates}
                 weeks={scheduleWeeks}
                 days={scheduleDays}
