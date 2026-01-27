@@ -26,8 +26,8 @@ export default function EmployeeAvailabilityTab({ employee }) {
 
   const { data: availabilities = [] } = useQuery({
     queryKey: ['employeeAvailability', employee?.id],
-    queryFn: () => base44.entities.EmployeeAvailability.filter({ employee_id: employee.id }),
-    enabled: !!employee,
+    queryFn: () => base44.entities.EmployeeAvailability.filter({ employee_id: employee?.id }),
+    enabled: !!employee?.id,
   });
 
   const [availabilityData, setAvailabilityData] = useState({});
