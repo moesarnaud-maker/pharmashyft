@@ -63,6 +63,10 @@ export default function EmployeeAvailabilityTab({ employee }) {
 
   const saveMutation = useMutation({
     mutationFn: async () => {
+      if (!employee?.id) {
+        throw new Error('Employee not found');
+      }
+
       // Delete existing availabilities
       for (const avail of availabilities) {
         await base44.entities.EmployeeAvailability.delete(avail.id);
