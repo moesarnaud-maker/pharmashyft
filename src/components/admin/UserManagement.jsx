@@ -204,7 +204,21 @@ export default function UserManagement({
                 <div className="text-center py-12">
                   <Clock className="w-12 h-12 mx-auto mb-4 text-slate-300" />
                   <h3 className="text-lg font-semibold text-slate-800 mb-2">No Pending Invitations</h3>
-                  <p className="text-slate-500">All invited users have completed registration</p>
+                  <p className="text-slate-500">
+                    {pendingInvitations.length === 0 
+                      ? "All invited users have completed registration"
+                      : `${pendingInvitations.length} pending invitation(s) filtered out by search`
+                    }
+                  </p>
+                  {/* Debug info - remove in production */}
+                  {import.meta.env.DEV && (
+                    <div className="mt-4 text-xs text-slate-400">
+                      <p>Total users: {users.length}</p>
+                      <p>Active users: {activeUsers.length}</p>
+                      <p>Pending invitations: {pendingInvitations.length}</p>
+                      <p>Users with status: {users.filter(u => u.status).length}</p>
+                    </div>
+                  )}
                 </div>
               ) : (
                 <Table>
