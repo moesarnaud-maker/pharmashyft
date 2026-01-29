@@ -111,7 +111,7 @@ export default function ProfileSetup({ user, employee, onComplete }) {
       });
     },
     onSuccess: () => {
-      toast.success('Profile setup completed! Welcome aboard!');
+      toast.success('Registration complete! Welcome to PharmaShyft.');
       queryClient.invalidateQueries({ queryKey: ['users'] });
       queryClient.invalidateQueries({ queryKey: ['employees'] });
       if (onComplete) onComplete();
@@ -137,20 +137,23 @@ export default function ProfileSetup({ user, employee, onComplete }) {
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 flex items-center justify-center p-4">
       <div className="w-full max-w-lg">
-        {/* Welcome Header */}
+        {/* Registration Header */}
         <div className="text-center mb-8">
           <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-600 to-purple-600 flex items-center justify-center mx-auto mb-4">
             <Clock className="w-8 h-8 text-white" />
           </div>
-          <h1 className="text-3xl font-bold text-slate-800 mb-2">Welcome to PharmaShyft!</h1>
-          <p className="text-slate-500">Complete your profile to get started. All fields are required.</p>
+          <h1 className="text-3xl font-bold text-slate-800 mb-2">Create Your Account</h1>
+          <p className="text-slate-500">
+            You must complete your registration before you can access PharmaShyft.
+            All fields are required.
+          </p>
         </div>
 
         <Card className="border-0 shadow-xl">
           <CardHeader>
-            <CardTitle>Account Setup</CardTitle>
+            <CardTitle>Registration</CardTitle>
             <CardDescription>
-              Please provide your personal details, home address and banking information.
+              Fill in your personal details, home address and banking information to complete your sign-up.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -236,7 +239,7 @@ export default function ProfileSetup({ user, employee, onComplete }) {
                 disabled={!isFormValid || saveProfileMutation.isPending}
                 className="w-full bg-green-600 hover:bg-green-700"
               >
-                {saveProfileMutation.isPending ? 'Saving...' : 'Complete Setup'}
+                {saveProfileMutation.isPending ? 'Creating account...' : 'Complete Registration'}
               </Button>
             </form>
           </CardContent>
