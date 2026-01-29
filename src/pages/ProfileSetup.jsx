@@ -73,13 +73,24 @@ export default function ProfileSetup({ user, employee, onComplete }) {
         status: 'active',
       });
 
-      // Update Employee entity if it exists
+      // Update or create Employee entity
+      let employeeId = employee?.id;
       if (employee) {
         await base44.entities.Employee.update(employee.id, {
           home_address: formData.home_address.trim(),
           iban: formData.iban.replace(/\s/g, ''),
           profile_completed: true,
         });
+      } else {
+        // No Employee record yet — create one linked to this user
+        const newEmployee = await base44.entities.Employee.create({
+          user_id: user.id,
+          home_address: formData.home_address.trim(),
+          iban: formData.iban.replace(/\s/g, ''),
+          status: 'active',
+          profile_completed: true,
+        });
+        employeeId = newEmployee.id;
       }
 
       // Audit log
@@ -89,7 +100,7 @@ export default function ProfileSetup({ user, employee, onComplete }) {
         actor_name: `${formData.first_name.trim()} ${formData.last_name.trim()}`,
         action: 'create',
         entity_type: 'ProfileSetup',
-        entity_id: employee?.id || user.id,
+        entity_id: employeeId || user.id,
         entity_description: 'Completed initial profile setup',
         after_data: JSON.stringify({
           first_name: formData.first_name.trim(),
