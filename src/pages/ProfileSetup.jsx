@@ -56,12 +56,13 @@ export default function ProfileSetup({ user, employee, onComplete }) {
         throw new Error('Invalid IBAN format');
       }
 
-      // Update User (name fields)
+      // Update User (name fields + mark as active)
       await base44.entities.User.update(user.id, {
         first_name: formData.first_name.trim(),
         last_name: formData.last_name.trim(),
         full_name: `${formData.first_name.trim()} ${formData.last_name.trim()}`,
         profile_completed: true,
+        status: 'active',
       });
 
       // Update Employee (other fields)
