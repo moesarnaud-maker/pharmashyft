@@ -75,7 +75,19 @@ export default function AdminDashboard() {
 
   const inviteUserMutation = useMutation({
     mutationFn: async ({ email, role }) => {
-      await base44.users.inviteUser(email, role);
+      // Base44 only supports 'user' and 'admin' roles for invitations.
+      // For 'manager', invite as 'user' then update the role after creation.
+      const inviteRole = role === 'manager' ? 'user' : role;
+      await base44.users.inviteUser(email, inviteRole);
+
+      // If the intended role is 'manager', find the newly created user and update their role
+      if (role === 'manager') {
+        const allUsers = await base44.entities.User.list();
+        const newUser = allUsers.find(u => u.email === email);
+        if (newUser) {
+          await base44.entities.User.update(newUser.id, { role: 'manager' });
+        }
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['users'] });
