@@ -80,9 +80,18 @@ export default function AdminDashboard() {
       const inviteRole = role === 'manager' ? 'user' : role;
       await base44.users.inviteUser(email, inviteRole);
 
-      // Find the newly created user and set proper status and role
-      const allUsers = await base44.entities.User.list();
-      const newUser = allUsers.find(u => u.email === email);
+      // Find the newly created user and set proper status and role.
+      // Retry with delay since the user record may not be immediately available.
+      let newUser = null;
+      for (let attempt = 0; attempt < 3; attempt++) {
+        if (attempt > 0) {
+          await new Promise(r => setTimeout(r, 1000 * attempt));
+        }
+        const allUsers = await base44.entities.User.list();
+        newUser = allUsers.find(u => u.email === email);
+        if (newUser) break;
+      }
+
       if (newUser) {
         await base44.entities.User.update(newUser.id, {
           status: 'pending_invitation',
@@ -96,7 +105,7 @@ export default function AdminDashboard() {
       toast.success('User invited successfully');
     },
     onError: (err) => {
-      toast.error('Failed to invite user');
+      toast.error('Failed to invite user: ' + (err.message || 'Unknown error'));
     },
   });
 

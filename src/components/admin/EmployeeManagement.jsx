@@ -66,7 +66,7 @@ export default function EmployeeManagement({
       await base44.entities.AuditLog.create({
         actor_id: currentUser.id,
         actor_email: currentUser.email,
-        actor_name: currentUser.full_name,
+        actor_name: formatUserName(currentUser),
         action: 'delete',
         entity_type: 'Employee',
         entity_id: employeeToDelete.id,

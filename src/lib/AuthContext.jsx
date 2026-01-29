@@ -97,23 +97,19 @@ export const AuthProvider = ({ children }) => {
       setUser(currentUser);
       setIsAuthenticated(true);
 
-      // Fetch employee data to check profile completion
+      // Fetch employee data
       try {
         const employees = await base44.entities.Employee.filter({ user_id: currentUser.id });
         if (employees.length > 0) {
           setEmployee(employees[0]);
-          // Check if profile is completed (user has first_name set indicates profile setup done)
-          const isComplete = currentUser.profile_completed === true;
-          setProfileCompleted(isComplete);
-        } else {
-          // No employee record yet, profile not completed
-          setProfileCompleted(false);
         }
       } catch (empError) {
         console.error('Error fetching employee data:', empError);
-        // If we can't fetch employee, assume profile needs setup
-        setProfileCompleted(false);
       }
+
+      // Profile completion is based on the User entity only.
+      // This ensures admin/manager users without employee records aren't blocked.
+      setProfileCompleted(currentUser.profile_completed === true);
 
       setIsLoadingAuth(false);
     } catch (error) {
