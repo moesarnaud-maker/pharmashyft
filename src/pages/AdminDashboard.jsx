@@ -80,13 +80,15 @@ export default function AdminDashboard() {
       const inviteRole = role === 'manager' ? 'user' : role;
       await base44.users.inviteUser(email, inviteRole);
 
-      // If the intended role is 'manager', find the newly created user and update their role
-      if (role === 'manager') {
-        const allUsers = await base44.entities.User.list();
-        const newUser = allUsers.find(u => u.email === email);
-        if (newUser) {
-          await base44.entities.User.update(newUser.id, { role: 'manager' });
-        }
+      // Find the newly created user and set proper status and role
+      const allUsers = await base44.entities.User.list();
+      const newUser = allUsers.find(u => u.email === email);
+      if (newUser) {
+        await base44.entities.User.update(newUser.id, {
+          status: 'pending_invitation',
+          role: role,
+          invited_at: new Date().toISOString(),
+        });
       }
     },
     onSuccess: () => {
