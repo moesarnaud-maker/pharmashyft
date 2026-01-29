@@ -98,6 +98,7 @@ export default function UserManagement({
 
   const roleColors = {
     admin: 'bg-purple-100 text-purple-700',
+    manager: 'bg-emerald-100 text-emerald-700',
     user: 'bg-blue-100 text-blue-700'
   };
 
@@ -330,6 +331,7 @@ export default function UserManagement({
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="user">Employee</SelectItem>
+                  <SelectItem value="manager">Manager</SelectItem>
                   <SelectItem value="admin">Admin</SelectItem>
                 </SelectContent>
               </Select>

@@ -31,6 +31,8 @@ export default function Layout({ children, currentPageName }) {
 
   const isKiosk = currentPageName === 'Kiosk';
   const isAdmin = user?.role === 'admin';
+  const isManager = user?.role === 'manager';
+  const canAccessManagerDashboard = isAdmin || isManager;
 
   if (isKiosk) {
     return <>{children}</>;
@@ -70,21 +72,21 @@ export default function Layout({ children, currentPageName }) {
                     Calendar
                   </Button>
                 </Link>
+                {canAccessManagerDashboard && (
+                  <Link to={createPageUrl('ManagerDashboard')}>
+                    <Button variant="ghost" size="sm" className={currentPageName === 'ManagerDashboard' ? 'bg-slate-100' : ''}>
+                      <Users className="w-4 h-4 mr-2" />
+                      Manager
+                    </Button>
+                  </Link>
+                )}
                 {isAdmin && (
-                  <>
-                    <Link to={createPageUrl('ManagerDashboard')}>
-                      <Button variant="ghost" size="sm" className={currentPageName === 'ManagerDashboard' ? 'bg-slate-100' : ''}>
-                        <Users className="w-4 h-4 mr-2" />
-                        Manager
-                      </Button>
-                    </Link>
-                    <Link to={createPageUrl('AdminDashboard')}>
-                      <Button variant="ghost" size="sm" className={currentPageName === 'AdminDashboard' ? 'bg-slate-100' : ''}>
-                        <Settings className="w-4 h-4 mr-2" />
-                        Admin
-                      </Button>
-                    </Link>
-                  </>
+                  <Link to={createPageUrl('AdminDashboard')}>
+                    <Button variant="ghost" size="sm" className={currentPageName === 'AdminDashboard' ? 'bg-slate-100' : ''}>
+                      <Settings className="w-4 h-4 mr-2" />
+                      Admin
+                    </Button>
+                  </Link>
                 )}
               </div>
 
@@ -147,21 +149,21 @@ export default function Layout({ children, currentPageName }) {
                       Calendar
                     </Button>
                   </Link>
+                  {canAccessManagerDashboard && (
+                    <Link to={createPageUrl('ManagerDashboard')} onClick={() => setMobileMenuOpen(false)}>
+                      <Button variant="ghost" className="w-full justify-start">
+                        <Users className="w-4 h-4 mr-2" />
+                        Manager
+                      </Button>
+                    </Link>
+                  )}
                   {isAdmin && (
-                    <>
-                      <Link to={createPageUrl('ManagerDashboard')} onClick={() => setMobileMenuOpen(false)}>
-                        <Button variant="ghost" className="w-full justify-start">
-                          <Users className="w-4 h-4 mr-2" />
-                          Manager
-                        </Button>
-                      </Link>
-                      <Link to={createPageUrl('AdminDashboard')} onClick={() => setMobileMenuOpen(false)}>
-                        <Button variant="ghost" className="w-full justify-start">
-                          <Settings className="w-4 h-4 mr-2" />
-                          Admin
-                        </Button>
-                      </Link>
-                    </>
+                    <Link to={createPageUrl('AdminDashboard')} onClick={() => setMobileMenuOpen(false)}>
+                      <Button variant="ghost" className="w-full justify-start">
+                        <Settings className="w-4 h-4 mr-2" />
+                        Admin
+                      </Button>
+                    </Link>
                   )}
                 </div>
               </div>

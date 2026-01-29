@@ -45,6 +45,7 @@ export default function EmployeeDetailsTab({ employee, user, teams, schedules, o
     vacation_days_total: employee?.vacation_days_total || 20,
     pin_code: employee?.pin_code || '',
     status: employee?.status || 'active',
+    role: user?.role || 'user',
   });
 
   const [eligibleLocationIds, setEligibleLocationIds] = useState([]);
@@ -70,9 +71,10 @@ export default function EmployeeDetailsTab({ employee, user, teams, schedules, o
         vacation_days_total: employee.vacation_days_total || 20,
         pin_code: employee.pin_code || '',
         status: employee.status || 'active',
+        role: user?.role || 'user',
       });
     }
-  }, [employee]);
+  }, [employee, user]);
 
   useEffect(() => {
     if (!formData.employee_number || !formData.main_location_id) {
@@ -202,12 +204,18 @@ export default function EmployeeDetailsTab({ employee, user, teams, schedules, o
         }
       }
 
+      // Update user role if changed
+      if (formData.role !== user.role) {
+        await base44.entities.User.update(user.id, { role: formData.role });
+      }
+
       return { finalEligibleIds, employeeId, isNew: isNewEmployee };
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['employees'] });
       queryClient.invalidateQueries({ queryKey: ['employeeLocations'] });
       queryClient.invalidateQueries({ queryKey: ['allEmployees'] });
+      queryClient.invalidateQueries({ queryKey: ['users'] });
       
       setEligibleLocationIds(data.finalEligibleIds);
       
@@ -297,6 +305,23 @@ export default function EmployeeDetailsTab({ employee, user, teams, schedules, o
                 onChange={(e) => setFormData({ ...formData, pin_code: e.target.value })}
               />
             </div>
+          </div>
+
+          <div>
+            <Label>Role</Label>
+            <Select
+              value={formData.role}
+              onValueChange={(v) => setFormData({ ...formData, role: v })}
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="user">Employee</SelectItem>
+                <SelectItem value="manager">Manager</SelectItem>
+                <SelectItem value="admin">Admin</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
 
           <div>
