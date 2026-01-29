@@ -37,9 +37,14 @@ export default function UserManagement({
   const getEmployeeForUser = (userId) => employees.find(e => e.user_id === userId);
   const getTeamName = (teamId) => teams.find(t => t.id === teamId)?.name || '-';
 
-  // Separate active users and pending invitations
-  const activeUsers = users.filter(u => u.status === 'active' || !u.status);
-  const pendingInvitations = users.filter(u => u.status === 'pending_invitation');
+  // Separate active users and pending invitations.
+  // A user is "pending" if explicitly marked OR if they have no status and haven't completed their profile.
+  const pendingInvitations = users.filter(u =>
+    u.status === 'pending_invitation' ||
+    (!u.status && u.profile_completed === false)
+  );
+  const pendingIds = new Set(pendingInvitations.map(u => u.id));
+  const activeUsers = users.filter(u => !pendingIds.has(u.id));
 
   const filteredActiveUsers = activeUsers.filter(u => {
     const searchLower = searchTerm.toLowerCase();
@@ -220,15 +225,6 @@ export default function UserManagement({
                       : `${pendingInvitations.length} pending invitation(s) filtered out by search`
                     }
                   </p>
-                  {/* Debug info - remove in production */}
-                  {import.meta.env.DEV && (
-                    <div className="mt-4 text-xs text-slate-400">
-                      <p>Total users: {users.length}</p>
-                      <p>Active users: {activeUsers.length}</p>
-                      <p>Pending invitations: {pendingInvitations.length}</p>
-                      <p>Users with status: {users.filter(u => u.status).length}</p>
-                    </div>
-                  )}
                 </div>
               ) : (
                 <Table>

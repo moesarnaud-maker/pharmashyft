@@ -1,33 +1,27 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { User, MapPin, CreditCard, Check, Clock } from 'lucide-react';
+import { User, MapPin, CreditCard, Clock } from 'lucide-react';
 
 export default function ProfileSetup({ user, employee, onComplete }) {
   const queryClient = useQueryClient();
-  const [currentStep, setCurrentStep] = useState(1);
   const [formData, setFormData] = useState({
     first_name: user?.first_name || '',
     last_name: user?.last_name || '',
-    gender: employee?.gender || '',
     home_address: employee?.home_address || '',
     iban: employee?.iban || '',
   });
+  const [errors, setErrors] = useState({});
 
-  const totalSteps = 3;
-
-  // Validate IBAN format (basic validation)
   const validateIBAN = (iban) => {
-    if (!iban) return true; // IBAN is optional
-    const cleanIBAN = iban.replace(/\s/g, '').toUpperCase();
-    const ibanRegex = /^[A-Z]{2}[0-9]{2}[A-Z0-9]{1,30}$/;
-    return ibanRegex.test(cleanIBAN);
+    if (!iban) return false;
+    const clean = iban.replace(/\s/g, '').toUpperCase();
+    return /^[A-Z]{2}[0-9]{2}[A-Z0-9]{1,30}$/.test(clean);
   };
 
   const formatIBAN = (value) => {
@@ -38,25 +32,39 @@ export default function ProfileSetup({ user, employee, onComplete }) {
   const handleIBANChange = (e) => {
     const formatted = formatIBAN(e.target.value);
     setFormData({ ...formData, iban: formatted });
+    if (errors.iban) {
+      setErrors({ ...errors, iban: null });
+    }
   };
 
-  const canProceedStep1 = formData.first_name.trim() && formData.last_name.trim();
-  const canProceedStep2 = true; // Gender is optional
-  const canProceedStep3 = !formData.iban || validateIBAN(formData.iban);
+  const handleChange = (field) => (e) => {
+    setFormData({ ...formData, [field]: e.target.value });
+    if (errors[field]) {
+      setErrors({ ...errors, [field]: null });
+    }
+  };
+
+  const validate = () => {
+    const newErrors = {};
+    if (!formData.first_name.trim()) newErrors.first_name = 'First name is required';
+    if (!formData.last_name.trim()) newErrors.last_name = 'Last name is required';
+    if (!formData.home_address.trim()) newErrors.home_address = 'Home address is required';
+    if (!formData.iban.trim()) {
+      newErrors.iban = 'IBAN is required';
+    } else if (!validateIBAN(formData.iban)) {
+      newErrors.iban = 'Invalid IBAN format';
+    }
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
 
   const saveProfileMutation = useMutation({
     mutationFn: async () => {
-      // Validate required fields
-      if (!formData.first_name.trim() || !formData.last_name.trim()) {
-        throw new Error('First name and last name are required');
+      if (!validate()) {
+        throw new Error('Please fill in all required fields');
       }
 
-      // Validate IBAN if provided
-      if (formData.iban && !validateIBAN(formData.iban)) {
-        throw new Error('Invalid IBAN format');
-      }
-
-      // Update User (name fields + mark as active)
+      // Update User entity
       await base44.entities.User.update(user.id, {
         first_name: formData.first_name.trim(),
         last_name: formData.last_name.trim(),
@@ -65,11 +73,10 @@ export default function ProfileSetup({ user, employee, onComplete }) {
         status: 'active',
       });
 
-      // Update Employee (other fields)
+      // Update Employee entity if it exists
       if (employee) {
         await base44.entities.Employee.update(employee.id, {
-          gender: formData.gender,
-          home_address: formData.home_address,
+          home_address: formData.home_address.trim(),
           iban: formData.iban.replace(/\s/g, ''),
           profile_completed: true,
         });
@@ -79,17 +86,16 @@ export default function ProfileSetup({ user, employee, onComplete }) {
       await base44.entities.AuditLog.create({
         actor_id: user.id,
         actor_email: user.email,
-        actor_name: `${formData.first_name} ${formData.last_name}`,
+        actor_name: `${formData.first_name.trim()} ${formData.last_name.trim()}`,
         action: 'create',
         entity_type: 'ProfileSetup',
         entity_id: employee?.id || user.id,
         entity_description: 'Completed initial profile setup',
         after_data: JSON.stringify({
-          first_name: formData.first_name,
-          last_name: formData.last_name,
-          gender: formData.gender,
-          home_address: formData.home_address ? '[REDACTED]' : '',
-          iban: formData.iban ? '[REDACTED]' : '',
+          first_name: formData.first_name.trim(),
+          last_name: formData.last_name.trim(),
+          home_address: '[REDACTED]',
+          iban: '[REDACTED]',
         }),
       });
     },
@@ -97,57 +103,25 @@ export default function ProfileSetup({ user, employee, onComplete }) {
       toast.success('Profile setup completed! Welcome aboard!');
       queryClient.invalidateQueries({ queryKey: ['users'] });
       queryClient.invalidateQueries({ queryKey: ['employees'] });
-      if (onComplete) {
-        onComplete();
-      }
+      if (onComplete) onComplete();
     },
     onError: (error) => {
-      toast.error(error.message || 'Failed to save profile');
+      if (error.message !== 'Please fill in all required fields') {
+        toast.error(error.message || 'Failed to save profile');
+      }
     },
   });
 
-  const handleNext = () => {
-    if (currentStep < totalSteps) {
-      setCurrentStep(currentStep + 1);
-    }
-  };
-
-  const handleBack = () => {
-    if (currentStep > 1) {
-      setCurrentStep(currentStep - 1);
-    }
-  };
-
-  const handleSubmit = () => {
+  const handleSubmit = (e) => {
+    e.preventDefault();
     saveProfileMutation.mutate();
   };
 
-  const renderStepIndicator = () => (
-    <div className="flex items-center justify-center mb-8">
-      {[1, 2, 3].map((step) => (
-        <React.Fragment key={step}>
-          <div
-            className={`w-10 h-10 rounded-full flex items-center justify-center font-semibold transition-all ${
-              step < currentStep
-                ? 'bg-green-500 text-white'
-                : step === currentStep
-                ? 'bg-blue-600 text-white'
-                : 'bg-slate-200 text-slate-500'
-            }`}
-          >
-            {step < currentStep ? <Check className="w-5 h-5" /> : step}
-          </div>
-          {step < 3 && (
-            <div
-              className={`w-16 h-1 mx-2 rounded ${
-                step < currentStep ? 'bg-green-500' : 'bg-slate-200'
-              }`}
-            />
-          )}
-        </React.Fragment>
-      ))}
-    </div>
-  );
+  const isFormValid = formData.first_name.trim() &&
+    formData.last_name.trim() &&
+    formData.home_address.trim() &&
+    formData.iban.trim() &&
+    validateIBAN(formData.iban);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 flex items-center justify-center p-4">
@@ -158,164 +132,104 @@ export default function ProfileSetup({ user, employee, onComplete }) {
             <Clock className="w-8 h-8 text-white" />
           </div>
           <h1 className="text-3xl font-bold text-slate-800 mb-2">Welcome to PharmaShyft!</h1>
-          <p className="text-slate-500">Let's set up your profile to get started</p>
+          <p className="text-slate-500">Complete your profile to get started. All fields are required.</p>
         </div>
 
-        {renderStepIndicator()}
-
-        {/* Step 1: Personal Information */}
-        {currentStep === 1 && (
-          <Card className="border-0 shadow-xl">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <User className="w-5 h-5 text-blue-600" />
-                Personal Information
-              </CardTitle>
-              <CardDescription>
-                Tell us your name. This will be displayed throughout the app.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div>
-                <Label htmlFor="first_name">First Name *</Label>
-                <Input
-                  id="first_name"
-                  value={formData.first_name}
-                  onChange={(e) => setFormData({ ...formData, first_name: e.target.value })}
-                  placeholder="John"
-                  autoFocus
-                />
-              </div>
-              <div>
-                <Label htmlFor="last_name">Last Name *</Label>
-                <Input
-                  id="last_name"
-                  value={formData.last_name}
-                  onChange={(e) => setFormData({ ...formData, last_name: e.target.value })}
-                  placeholder="Doe"
-                />
-              </div>
-              <div>
-                <Label>Gender</Label>
-                <Select
-                  value={formData.gender}
-                  onValueChange={(v) => setFormData({ ...formData, gender: v })}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select gender (optional)" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="male">Male</SelectItem>
-                    <SelectItem value="female">Female</SelectItem>
-                    <SelectItem value="other">Other</SelectItem>
-                    <SelectItem value="prefer_not_to_say">Prefer not to say</SelectItem>
-                  </SelectContent>
-                </Select>
+        <Card className="border-0 shadow-xl">
+          <CardHeader>
+            <CardTitle>Account Setup</CardTitle>
+            <CardDescription>
+              Please provide your personal details, home address and banking information.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleSubmit} className="space-y-6">
+              {/* Personal Information */}
+              <div className="space-y-4">
+                <div className="flex items-center gap-2 text-sm font-medium text-slate-700">
+                  <User className="w-4 h-4 text-blue-600" />
+                  Personal Information
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="first_name">First Name *</Label>
+                    <Input
+                      id="first_name"
+                      value={formData.first_name}
+                      onChange={handleChange('first_name')}
+                      placeholder="John"
+                      autoFocus
+                      className={errors.first_name ? 'border-red-400' : ''}
+                    />
+                    {errors.first_name && <p className="text-xs text-red-600 mt-1">{errors.first_name}</p>}
+                  </div>
+                  <div>
+                    <Label htmlFor="last_name">Last Name *</Label>
+                    <Input
+                      id="last_name"
+                      value={formData.last_name}
+                      onChange={handleChange('last_name')}
+                      placeholder="Doe"
+                      className={errors.last_name ? 'border-red-400' : ''}
+                    />
+                    {errors.last_name && <p className="text-xs text-red-600 mt-1">{errors.last_name}</p>}
+                  </div>
+                </div>
               </div>
 
-              <div className="flex justify-end pt-4">
-                <Button onClick={handleNext} disabled={!canProceedStep1}>
-                  Continue
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Step 2: Address Information */}
-        {currentStep === 2 && (
-          <Card className="border-0 shadow-xl">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <MapPin className="w-5 h-5 text-blue-600" />
-                Address Information
-              </CardTitle>
-              <CardDescription>
-                Your home address for HR records.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div>
-                <Label htmlFor="home_address">Home Address</Label>
-                <Input
-                  id="home_address"
-                  value={formData.home_address}
-                  onChange={(e) => setFormData({ ...formData, home_address: e.target.value })}
-                  placeholder="Street, Number, Postal Code, City, Country"
-                />
-                <p className="text-xs text-slate-500 mt-1">
-                  Your full home address (optional but recommended)
-                </p>
+              {/* Address */}
+              <div className="space-y-4">
+                <div className="flex items-center gap-2 text-sm font-medium text-slate-700">
+                  <MapPin className="w-4 h-4 text-blue-600" />
+                  Home Address
+                </div>
+                <div>
+                  <Label htmlFor="home_address">Full Address *</Label>
+                  <Input
+                    id="home_address"
+                    value={formData.home_address}
+                    onChange={handleChange('home_address')}
+                    placeholder="Street, Number, Postal Code, City, Country"
+                    className={errors.home_address ? 'border-red-400' : ''}
+                  />
+                  {errors.home_address && <p className="text-xs text-red-600 mt-1">{errors.home_address}</p>}
+                </div>
               </div>
 
-              <div className="flex justify-between pt-4">
-                <Button variant="outline" onClick={handleBack}>
-                  Back
-                </Button>
-                <Button onClick={handleNext} disabled={!canProceedStep2}>
-                  Continue
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Step 3: Banking Information */}
-        {currentStep === 3 && (
-          <Card className="border-0 shadow-xl">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <CreditCard className="w-5 h-5 text-blue-600" />
-                Banking Information
-              </CardTitle>
-              <CardDescription>
-                Your bank account for salary payments.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div>
-                <Label htmlFor="iban">IBAN (International Bank Account Number)</Label>
-                <Input
-                  id="iban"
-                  value={formData.iban}
-                  onChange={handleIBANChange}
-                  placeholder="BE68 5390 0754 7034"
-                  maxLength={34}
-                />
-                <p className="text-xs text-slate-500 mt-1">
-                  Spaces will be added automatically for readability
-                </p>
-                {formData.iban && !validateIBAN(formData.iban) && (
-                  <p className="text-xs text-red-600 mt-1">
-                    Invalid IBAN format
-                  </p>
-                )}
+              {/* Banking */}
+              <div className="space-y-4">
+                <div className="flex items-center gap-2 text-sm font-medium text-slate-700">
+                  <CreditCard className="w-4 h-4 text-blue-600" />
+                  Banking Information
+                </div>
+                <div>
+                  <Label htmlFor="iban">IBAN *</Label>
+                  <Input
+                    id="iban"
+                    value={formData.iban}
+                    onChange={handleIBANChange}
+                    placeholder="BE68 5390 0754 7034"
+                    maxLength={42}
+                    className={errors.iban ? 'border-red-400' : ''}
+                  />
+                  {errors.iban && <p className="text-xs text-red-600 mt-1">{errors.iban}</p>}
+                  <p className="text-xs text-slate-500 mt-1">Spaces are added automatically for readability</p>
+                </div>
+                <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-sm text-amber-900">
+                  <strong>Privacy Notice:</strong> Your banking information is encrypted and only used for salary payments.
+                </div>
               </div>
 
-              <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-sm text-amber-900">
-                <strong>Privacy Notice:</strong> Your banking information is encrypted and only used for salary payments.
-              </div>
-
-              <div className="flex justify-between pt-4">
-                <Button variant="outline" onClick={handleBack}>
-                  Back
-                </Button>
-                <Button 
-                  onClick={handleSubmit} 
-                  disabled={!canProceedStep3 || saveProfileMutation.isPending}
-                  className="bg-green-600 hover:bg-green-700"
-                >
-                  {saveProfileMutation.isPending ? 'Saving...' : 'Complete Setup'}
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Progress Summary */}
-        <div className="mt-6 text-center text-sm text-slate-500">
-          Step {currentStep} of {totalSteps}
-        </div>
+              <Button
+                type="submit"
+                disabled={!isFormValid || saveProfileMutation.isPending}
+                className="w-full bg-green-600 hover:bg-green-700"
+              >
+                {saveProfileMutation.isPending ? 'Saving...' : 'Complete Setup'}
+              </Button>
+            </form>
+          </CardContent>
+        </Card>
       </div>
     </div>
   );

@@ -75,30 +75,32 @@ export default function AdminDashboard() {
 
   const inviteUserMutation = useMutation({
     mutationFn: async ({ email, role }) => {
-      // Base44 only supports 'user' and 'admin' roles for invitations.
-      // For 'manager', invite as 'user' then update the role after creation.
+      // Base44 SDK only supports 'user' and 'admin' for invitations.
+      // For 'manager', invite as 'user' then update role afterwards.
       const inviteRole = role === 'manager' ? 'user' : role;
       await base44.users.inviteUser(email, inviteRole);
 
-      // Find the newly created user and set proper status and role.
-      // Retry with delay since the user record may not be immediately available.
+      // The user record is created asynchronously by the SDK.
+      // Retry with increasing delays until we find it (up to 5 attempts).
       let newUser = null;
-      for (let attempt = 0; attempt < 3; attempt++) {
-        if (attempt > 0) {
-          await new Promise(r => setTimeout(r, 1000 * attempt));
-        }
+      for (let attempt = 0; attempt < 5; attempt++) {
+        await new Promise(r => setTimeout(r, 1000 + attempt * 1000));
         const allUsers = await base44.entities.User.list();
         newUser = allUsers.find(u => u.email === email);
         if (newUser) break;
       }
 
-      if (newUser) {
-        await base44.entities.User.update(newUser.id, {
-          status: 'pending_invitation',
-          role: role,
-          invited_at: new Date().toISOString(),
-        });
+      if (!newUser) {
+        throw new Error('User was invited but could not be found. Please check the Pending Invitations tab in a few moments.');
       }
+
+      // Mark as pending so it appears in the Pending Invitations tab
+      await base44.entities.User.update(newUser.id, {
+        status: 'pending_invitation',
+        role: role,
+        invited_at: new Date().toISOString(),
+        profile_completed: false,
+      });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['users'] });

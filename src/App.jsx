@@ -18,11 +18,9 @@ const LayoutWrapper = ({ children, currentPageName }) => Layout ?
   : <>{children}</>;
 
 const AuthenticatedApp = () => {
-  const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin, profileCompleted, user, employee, refreshUserData } = useAuth();
-  const location = useLocation();
+  const { isLoading, authError, navigateToLogin, profileCompleted, user, employee, refreshUserData, isAuthenticated } = useAuth();
 
-  // Show loading spinner while checking app public settings or auth
-  if (isLoadingPublicSettings || isLoadingAuth) {
+  if (isLoading) {
     return (
       <div className="fixed inset-0 flex items-center justify-center">
         <div className="w-8 h-8 border-4 border-slate-200 border-t-slate-800 rounded-full animate-spin"></div>
@@ -30,31 +28,28 @@ const AuthenticatedApp = () => {
     );
   }
 
-  // Handle authentication errors
-  if (authError) {
-    if (authError.type === 'user_not_registered') {
-      return <UserNotRegisteredError />;
-    } else if (authError.type === 'auth_required') {
-      // Redirect to login automatically
+  // Handle auth errors — only when user is NOT authenticated
+  if (authError && !isAuthenticated) {
+    if (authError.type === 'auth_required') {
       navigateToLogin();
       return null;
     }
+    if (authError.type === 'user_not_registered') {
+      return <UserNotRegisteredError />;
+    }
   }
 
-  // If profile is not completed and user is authenticated, show ProfileSetup
+  // If profile is not completed, show ProfileSetup (the onboarding page)
   if (user && !profileCompleted) {
     return (
       <ProfileSetup
         user={user}
         employee={employee}
-        onComplete={() => {
-          refreshUserData();
-        }}
+        onComplete={() => refreshUserData()}
       />
     );
   }
 
-  // Render the main app
   return (
     <Routes>
       <Route path="/" element={
@@ -73,7 +68,6 @@ const AuthenticatedApp = () => {
           }
         />
       ))}
-      {/* ProfileSetup route - redirect to home if profile is already completed */}
       <Route path="/ProfileSetup" element={<Navigate to="/" replace />} />
       <Route path="*" element={<PageNotFound />} />
     </Routes>
@@ -82,7 +76,6 @@ const AuthenticatedApp = () => {
 
 
 function App() {
-
   return (
     <AuthProvider>
       <QueryClientProvider client={queryClientInstance}>
