@@ -89,26 +89,30 @@ export default function EmployeeProfileDialog({
               <User className="w-4 h-4" />
               Details
             </TabsTrigger>
-            <TabsTrigger value="schedule" className="gap-2">
-              <Calendar className="w-4 h-4" />
-              Schedule
-            </TabsTrigger>
-            <TabsTrigger value="availability" className="gap-2">
-              <Clock className="w-4 h-4" />
-              Availability
-            </TabsTrigger>
-            <TabsTrigger value="timeentries" className="gap-2">
-              <Clock className="w-4 h-4" />
-              Time Entries
-            </TabsTrigger>
-            <TabsTrigger value="timesheets" className="gap-2">
-              <FileText className="w-4 h-4" />
-              Timesheets
-            </TabsTrigger>
-            <TabsTrigger value="absences" className="gap-2">
-              <Briefcase className="w-4 h-4" />
-              Absences
-            </TabsTrigger>
+            {employee && (
+              <>
+                <TabsTrigger value="schedule" className="gap-2">
+                  <Calendar className="w-4 h-4" />
+                  Schedule
+                </TabsTrigger>
+                <TabsTrigger value="availability" className="gap-2">
+                  <Clock className="w-4 h-4" />
+                  Availability
+                </TabsTrigger>
+                <TabsTrigger value="timeentries" className="gap-2">
+                  <Clock className="w-4 h-4" />
+                  Time Entries
+                </TabsTrigger>
+                <TabsTrigger value="timesheets" className="gap-2">
+                  <FileText className="w-4 h-4" />
+                  Timesheets
+                </TabsTrigger>
+                <TabsTrigger value="absences" className="gap-2">
+                  <Briefcase className="w-4 h-4" />
+                  Absences
+                </TabsTrigger>
+              </>
+            )}
           </TabsList>
 
           <div className="flex-1 overflow-y-auto p-6">
@@ -124,31 +128,35 @@ export default function EmployeeProfileDialog({
               />
             </TabsContent>
 
-            <TabsContent value="schedule" className="mt-0">
-              <EmployeeScheduleTab
-                employee={employee}
-                assignments={scheduleAssignments.filter(a => a.employee_id === employee?.id)}
-                templates={scheduleTemplates}
-                weeks={scheduleWeeks}
-                days={scheduleDays}
-              />
-            </TabsContent>
+            {employee && (
+              <>
+                <TabsContent value="schedule" className="mt-0">
+                  <EmployeeScheduleTab
+                    employee={employee}
+                    assignments={scheduleAssignments.filter(a => a.employee_id === employee.id)}
+                    templates={scheduleTemplates}
+                    weeks={scheduleWeeks}
+                    days={scheduleDays}
+                  />
+                </TabsContent>
 
-            <TabsContent value="availability" className="mt-0">
-              <EmployeeAvailabilityTab employee={employee} />
-            </TabsContent>
+                <TabsContent value="availability" className="mt-0">
+                  <EmployeeAvailabilityTab employee={employee} />
+                </TabsContent>
 
-            <TabsContent value="timeentries" className="mt-0">
-              <EmployeeTimeEntriesTab entries={timeEntries} />
-            </TabsContent>
+                <TabsContent value="timeentries" className="mt-0">
+                  <EmployeeTimeEntriesTab entries={timeEntries} />
+                </TabsContent>
 
-            <TabsContent value="timesheets" className="mt-0">
-              <EmployeeTimesheetsTab timesheets={timesheets} />
-            </TabsContent>
+                <TabsContent value="timesheets" className="mt-0">
+                  <EmployeeTimesheetsTab timesheets={timesheets} />
+                </TabsContent>
 
-            <TabsContent value="absences" className="mt-0">
-              <EmployeeAbsencesTab absences={absenceRequests} />
-            </TabsContent>
+                <TabsContent value="absences" className="mt-0">
+                  <EmployeeAbsencesTab absences={absenceRequests} />
+                </TabsContent>
+              </>
+            )}
           </div>
         </Tabs>
       </DialogContent>
