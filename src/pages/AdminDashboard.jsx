@@ -101,9 +101,13 @@ export default function AdminDashboard() {
         invited_at: new Date().toISOString(),
         profile_completed: false,
       });
+
+      return newUser;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['users'] });
+    onSuccess: async () => {
+      // Force refetch after a short delay to ensure backend sync
+      await queryClient.invalidateQueries({ queryKey: ['users'] });
+      await queryClient.refetchQueries({ queryKey: ['users'] });
       toast.success('User invited successfully');
     },
     onError: (err) => {
