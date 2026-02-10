@@ -38,13 +38,15 @@ export default function UserManagement({
   const getTeamName = (teamId) => teams.find(t => t.id === teamId)?.name || '-';
 
   // Separate active users and pending invitations.
-  // A user is "pending" if explicitly marked OR if they have no status and haven't completed their profile.
+  // A user is "pending" if:
+  // - status is 'pending_invitation', OR
+  // - profile_completed is not true (undefined, null, or false)
   const pendingInvitations = users.filter(u =>
-    u.status === 'pending_invitation' ||
-    (!u.status && u.profile_completed === false)
+    u.status === 'pending_invitation' || u.profile_completed !== true
   );
-  const pendingIds = new Set(pendingInvitations.map(u => u.id));
-  const activeUsers = users.filter(u => !pendingIds.has(u.id));
+  const activeUsers = users.filter(u =>
+    u.status !== 'pending_invitation' && u.profile_completed === true
+  );
 
   const filteredActiveUsers = activeUsers.filter(u => {
     const searchLower = searchTerm.toLowerCase();

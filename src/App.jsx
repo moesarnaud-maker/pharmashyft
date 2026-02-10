@@ -3,53 +3,56 @@ import { QueryClientProvider } from '@tanstack/react-query'
 import { queryClientInstance } from '@/lib/query-client'
 import NavigationTracker from '@/lib/NavigationTracker'
 import { pagesConfig } from './pages.config'
-import { BrowserRouter as Router, Route, Routes, Navigate, useLocation } from 'react-router-dom';
+import { BrowserRouter as Router, Route, Routes, Navigate } from 'react-router-dom';
 import PageNotFound from './lib/PageNotFound';
 import { AuthProvider, useAuth } from '@/lib/AuthContext';
-import UserNotRegisteredError from '@/components/UserNotRegisteredError';
-import ProfileSetup from './pages/ProfileSetup';
+import Registration from './pages/Registration';
 
 const { Pages, Layout, mainPage } = pagesConfig;
 const mainPageKey = mainPage ?? Object.keys(Pages)[0];
-const MainPage = mainPageKey ? Pages[mainPageKey] : <></>;
+const MainPage = mainPageKey ? Pages[mainPageKey] : () => <div>No main page</div>;
 
 const LayoutWrapper = ({ children, currentPageName }) => Layout ?
   <Layout currentPageName={currentPageName}>{children}</Layout>
   : <>{children}</>;
 
-const AuthenticatedApp = () => {
-  const { isLoading, authError, navigateToLogin, profileCompleted, user, employee, refreshUserData, isAuthenticated } = useAuth();
-
-  if (isLoading) {
-    return (
-      <div className="fixed inset-0 flex items-center justify-center">
-        <div className="w-8 h-8 border-4 border-slate-200 border-t-slate-800 rounded-full animate-spin"></div>
+function LoadingScreen() {
+  return (
+    <div className="fixed inset-0 flex items-center justify-center bg-white">
+      <div className="text-center">
+        <div className="w-10 h-10 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin mx-auto mb-4"></div>
+        <p className="text-slate-500">Loading...</p>
       </div>
-    );
+    </div>
+  );
+}
+
+function AuthenticatedApp() {
+  const { user, employee, isLoading, authError, isProfileComplete, redirectToLogin, refreshUserData } = useAuth();
+
+  // Show loading while checking auth
+  if (isLoading) {
+    return <LoadingScreen />;
   }
 
-  // Handle auth errors — only when user is NOT authenticated
-  if (authError && !isAuthenticated) {
-    if (authError.type === 'auth_required') {
-      navigateToLogin();
-      return null;
-    }
-    if (authError.type === 'user_not_registered') {
-      return <UserNotRegisteredError />;
-    }
+  // No token or auth failed - redirect to login
+  if (authError) {
+    redirectToLogin();
+    return <LoadingScreen />;
   }
 
-  // If profile is not completed, show ProfileSetup (the onboarding page)
-  if (user && !profileCompleted) {
+  // User authenticated but profile not complete - show registration
+  if (user && !isProfileComplete) {
     return (
-      <ProfileSetup
+      <Registration
         user={user}
         employee={employee}
-        onComplete={() => refreshUserData()}
+        onComplete={refreshUserData}
       />
     );
   }
 
+  // User authenticated and profile complete - show app
   return (
     <Routes>
       <Route path="/" element={
@@ -68,12 +71,10 @@ const AuthenticatedApp = () => {
           }
         />
       ))}
-      <Route path="/ProfileSetup" element={<Navigate to="/" replace />} />
       <Route path="*" element={<PageNotFound />} />
     </Routes>
   );
-};
-
+}
 
 function App() {
   return (

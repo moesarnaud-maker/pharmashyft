@@ -81,20 +81,20 @@ export default function AdminDashboard() {
       await base44.users.inviteUser(email, inviteRole);
 
       // The user record is created asynchronously by the SDK.
-      // Retry with increasing delays until we find it (up to 5 attempts).
+      // Retry with increasing delays until we find it.
       let newUser = null;
-      for (let attempt = 0; attempt < 5; attempt++) {
-        await new Promise(r => setTimeout(r, 1000 + attempt * 1000));
+      for (let attempt = 0; attempt < 6; attempt++) {
+        await new Promise(r => setTimeout(r, 1500 * (attempt + 1)));
         const allUsers = await base44.entities.User.list();
         newUser = allUsers.find(u => u.email === email);
         if (newUser) break;
       }
 
       if (!newUser) {
-        throw new Error('User was invited but could not be found. Please check the Pending Invitations tab in a few moments.');
+        throw new Error('Invitation sent but user record not found yet. Check Pending Invitations in a moment.');
       }
 
-      // Mark as pending so it appears in the Pending Invitations tab
+      // Set user as pending invitation
       await base44.entities.User.update(newUser.id, {
         status: 'pending_invitation',
         role: role,
@@ -128,11 +128,18 @@ export default function AdminDashboard() {
   });
 
   const cancelInviteMutation = useMutation({
-    mutationFn: async (user) => {
-      await base44.entities.User.delete(user.id);
+    mutationFn: async (userToCancel) => {
+      // Delete associated employee record first
+      const emp = employees.find(e => e.user_id === userToCancel.id);
+      if (emp) {
+        await base44.entities.Employee.delete(emp.id);
+      }
+      // Then delete the user
+      await base44.entities.User.delete(userToCancel.id);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['users'] });
+      queryClient.invalidateQueries({ queryKey: ['employees'] });
       toast.success('Invitation cancelled');
     },
     onError: (err) => {
