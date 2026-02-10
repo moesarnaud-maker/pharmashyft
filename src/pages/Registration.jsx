@@ -64,13 +64,15 @@ export default function Registration({ user, employee, onComplete }) {
 
   const registerMutation = useMutation({
     mutationFn: async () => {
-      // Update User with name and mark profile complete
+      // Update User: set name, mark profile complete, activate, clear token
       await base44.entities.User.update(user.id, {
         first_name: formData.first_name.trim(),
         last_name: formData.last_name.trim(),
         full_name: `${formData.first_name.trim()} ${formData.last_name.trim()}`,
         profile_completed: true,
         status: 'active',
+        activated_at: new Date().toISOString(),
+        invitation_token: null, // Mark token as used
       });
 
       // Create or update Employee record
@@ -95,15 +97,19 @@ export default function Registration({ user, employee, onComplete }) {
         });
       }
 
-      // Log the registration
+      // Log the activation
       await base44.entities.AuditLog.create({
         actor_id: user.id,
         actor_email: user.email,
         actor_name: `${formData.first_name.trim()} ${formData.last_name.trim()}`,
-        action: 'create',
-        entity_type: 'Registration',
+        action: 'activate',
+        entity_type: 'User',
         entity_id: user.id,
-        entity_description: 'New user completed registration',
+        entity_description: `User ${user.email} completed registration and was activated`,
+        after_data: JSON.stringify({
+          status: 'active',
+          activated_at: new Date().toISOString(),
+        }),
       });
     },
     onSuccess: () => {
@@ -158,6 +164,17 @@ export default function Registration({ user, employee, onComplete }) {
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-6">
+
+              {/* Email (read-only from invitation) */}
+              <div className="space-y-2">
+                <Label>Email Address</Label>
+                <Input
+                  value={user?.email || ''}
+                  disabled
+                  className="bg-slate-50 text-slate-600"
+                />
+                <p className="text-xs text-slate-500">This is the email address from your invitation</p>
+              </div>
 
               {/* Personal Information Section */}
               <div className="space-y-4">

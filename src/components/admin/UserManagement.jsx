@@ -14,17 +14,17 @@ import EmployeeProfileDialog from '@/components/employee/EmployeeProfileDialog';
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { formatUserName, getUserInitials } from '@/components/utils/helpers';
 
-export default function UserManagement({ 
-  users = [], 
+export default function UserManagement({
+  users = [],
   employees = [],
   teams = [],
   schedules = [],
-  onInviteUser, 
+  onInviteUser,
   onUpdateEmployee,
   onResendInvite,
   onCancelInvite,
   onDeleteUser,
-  isLoading 
+  isLoading
 }) {
   const [searchTerm, setSearchTerm] = useState('');
   const [showInviteDialog, setShowInviteDialog] = useState(false);
@@ -37,15 +37,12 @@ export default function UserManagement({
   const getEmployeeForUser = (userId) => employees.find(e => e.user_id === userId);
   const getTeamName = (teamId) => teams.find(t => t.id === teamId)?.name || '-';
 
-  // Separate active users and pending invitations.
-  // A user is "pending" if:
-  // - status is 'pending_invitation', OR
-  // - profile_completed is not true (undefined, null, or false)
-  const pendingInvitations = users.filter(u =>
-    u.status === 'pending_invitation' || u.profile_completed !== true
-  );
+  // Pending invitations = users with status 'pending_invitation'
+  const pendingInvitations = users.filter(u => u.status === 'pending_invitation');
+
+  // Active users = users with status 'active' or completed profile
   const activeUsers = users.filter(u =>
-    u.status !== 'pending_invitation' && u.profile_completed === true
+    u.status === 'active' || (u.status !== 'pending_invitation' && u.profile_completed === true)
   );
 
   const filteredActiveUsers = activeUsers.filter(u => {
@@ -57,7 +54,7 @@ export default function UserManagement({
     );
   });
 
-  const filteredPendingInvitations = pendingInvitations.filter(u => 
+  const filteredPendingInvitations = pendingInvitations.filter(u =>
     u.email?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
@@ -222,8 +219,8 @@ export default function UserManagement({
                   <Clock className="w-12 h-12 mx-auto mb-4 text-slate-300" />
                   <h3 className="text-lg font-semibold text-slate-800 mb-2">No Pending Invitations</h3>
                   <p className="text-slate-500">
-                    {pendingInvitations.length === 0 
-                      ? "All invited users have completed registration"
+                    {pendingInvitations.length === 0
+                      ? "No pending invitations. Invite users using the button above."
                       : `${pendingInvitations.length} pending invitation(s) filtered out by search`
                     }
                   </p>

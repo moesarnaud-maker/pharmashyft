@@ -75,40 +75,51 @@ export default function AdminDashboard() {
 
   const inviteUserMutation = useMutation({
     mutationFn: async ({ email, role }) => {
-      // Base44 SDK only supports 'user' and 'admin' for invitations.
-      // For 'manager', invite as 'user' then update role afterwards.
+      // Check if user already exists
+      const existingUsers = await base44.entities.User.list();
+      const existingUser = existingUsers.find(u => u.email === email);
+
+      if (existingUser) {
+        if (existingUser.status === 'pending_invitation') {
+          throw new Error('This user already has a pending invitation');
+        }
+        throw new Error('This email is already registered');
+      }
+
+      // Generate a secure invitation token
+      const invitationToken = crypto.randomUUID();
+
+      // Create User record immediately with pending_invitation status
+      const newUser = await base44.entities.User.create({
+        email: email,
+        role: role,
+        status: 'pending_invitation',
+        invited_by: user?.id,
+        invited_at: new Date().toISOString(),
+        invitation_token: invitationToken,
+        profile_completed: false,
+      });
+
+      // Send invitation email via SDK
       const inviteRole = role === 'manager' ? 'user' : role;
       await base44.users.inviteUser(email, inviteRole);
 
-      // The user record is created asynchronously by the SDK.
-      // Retry with increasing delays until we find it.
-      let newUser = null;
-      for (let attempt = 0; attempt < 6; attempt++) {
-        await new Promise(r => setTimeout(r, 1500 * (attempt + 1)));
-        const allUsers = await base44.entities.User.list();
-        newUser = allUsers.find(u => u.email === email);
-        if (newUser) break;
-      }
-
-      if (!newUser) {
-        throw new Error('Invitation sent but user record not found yet. Check Pending Invitations in a moment.');
-      }
-
-      // Set user as pending invitation
-      await base44.entities.User.update(newUser.id, {
-        status: 'pending_invitation',
-        role: role,
-        invited_at: new Date().toISOString(),
-        profile_completed: false,
+      // Create audit log
+      await base44.entities.AuditLog.create({
+        actor_id: user?.id,
+        actor_email: user?.email,
+        actor_name: formatUserName(user),
+        action: 'invite',
+        entity_type: 'User',
+        entity_id: newUser.id,
+        entity_description: `Invited ${email} with role ${role}`,
       });
 
       return newUser;
     },
-    onSuccess: async () => {
-      // Force refetch after a short delay to ensure backend sync
-      await queryClient.invalidateQueries({ queryKey: ['users'] });
-      await queryClient.refetchQueries({ queryKey: ['users'] });
-      toast.success('User invited successfully');
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['users'] });
+      toast.success('User invited successfully! They appear in Pending Invitations.');
     },
     onError: (err) => {
       toast.error('Failed to invite user: ' + (err.message || 'Unknown error'));
@@ -116,33 +127,33 @@ export default function AdminDashboard() {
   });
 
   const resendInviteMutation = useMutation({
-    mutationFn: async (user) => {
-      await base44.users.resendInvite(user.email);
+    mutationFn: async (pendingUser) => {
+      await base44.users.resendInvite(pendingUser.email);
+
+      // Update invited_at timestamp
+      await base44.entities.User.update(pendingUser.id, {
+        invited_at: new Date().toISOString(),
+      });
     },
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['users'] });
       toast.success('Invitation resent successfully');
     },
-    onError: (err) => {
+    onError: () => {
       toast.error('Failed to resend invitation');
     },
   });
 
   const cancelInviteMutation = useMutation({
-    mutationFn: async (userToCancel) => {
-      // Delete associated employee record first
-      const emp = employees.find(e => e.user_id === userToCancel.id);
-      if (emp) {
-        await base44.entities.Employee.delete(emp.id);
-      }
-      // Then delete the user
-      await base44.entities.User.delete(userToCancel.id);
+    mutationFn: async (pendingUser) => {
+      // Delete the user record to cancel invitation
+      await base44.entities.User.delete(pendingUser.id);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['users'] });
-      queryClient.invalidateQueries({ queryKey: ['employees'] });
       toast.success('Invitation cancelled');
     },
-    onError: (err) => {
+    onError: () => {
       toast.error('Failed to cancel invitation');
     },
   });
@@ -419,8 +430,8 @@ export default function AdminDashboard() {
               schedules={schedules}
               onInviteUser={(data) => inviteUserMutation.mutate(data)}
               onUpdateEmployee={(data) => updateEmployeeMutation.mutate(data)}
-              onResendInvite={(user) => resendInviteMutation.mutate(user)}
-              onCancelInvite={(user) => cancelInviteMutation.mutate(user)}
+              onResendInvite={(pendingUser) => resendInviteMutation.mutate(pendingUser)}
+              onCancelInvite={(pendingUser) => cancelInviteMutation.mutate(pendingUser)}
               onDeleteUser={(user) => deleteUserMutation.mutate(user)}
               isLoading={inviteUserMutation.isPending || updateEmployeeMutation.isPending || deleteUserMutation.isPending}
             />
