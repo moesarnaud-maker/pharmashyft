@@ -75,37 +75,51 @@ export default function AdminDashboard() {
 
   const inviteUserMutation = useMutation({
     mutationFn: async ({ email, role }) => {
-      // Check if already invited
+      // Check if user already exists
       const existingUsers = await base44.entities.User.list();
-      if (existingUsers.find(u => u.email === email)) {
-        throw new Error('This email is already registered or has a pending invitation');
+      const existingUser = existingUsers.find(u => u.email === email);
+
+      if (existingUser) {
+        if (existingUser.status === 'pending_invitation') {
+          throw new Error('This user already has a pending invitation');
+        }
+        throw new Error('This email is already registered');
       }
 
-      // Base44 SDK only supports 'user' and 'admin' for invitations
+      // Generate a secure invitation token
+      const invitationToken = crypto.randomUUID();
+
+      // Create User record immediately with pending_invitation status
+      const newUser = await base44.entities.User.create({
+        email: email,
+        role: role,
+        status: 'pending_invitation',
+        invited_by: user?.id,
+        invited_at: new Date().toISOString(),
+        invitation_token: invitationToken,
+        profile_completed: false,
+      });
+
+      // Send invitation email via SDK
       const inviteRole = role === 'manager' ? 'user' : role;
       await base44.users.inviteUser(email, inviteRole);
 
-      // Create a tracking record for the pending invitation
-      // We'll store it in AuditLog since the User record doesn't exist yet
+      // Create audit log
       await base44.entities.AuditLog.create({
-        actor_id: user?.id || 'system',
-        actor_email: user?.email || 'system',
-        actor_name: formatUserName(user) || 'System',
+        actor_id: user?.id,
+        actor_email: user?.email,
+        actor_name: formatUserName(user),
         action: 'invite',
-        entity_type: 'PendingInvitation',
-        entity_id: email,
+        entity_type: 'User',
+        entity_id: newUser.id,
         entity_description: `Invited ${email} with role ${role}`,
-        after_data: JSON.stringify({
-          email: email,
-          role: role,
-          invited_at: new Date().toISOString(),
-          status: 'pending',
-        }),
       });
+
+      return newUser;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['auditLogs'] });
-      toast.success('Invitation sent successfully! The user will appear in Active Users once they complete registration.');
+      queryClient.invalidateQueries({ queryKey: ['users'] });
+      toast.success('User invited successfully! They appear in Pending Invitations.');
     },
     onError: (err) => {
       toast.error('Failed to invite user: ' + (err.message || 'Unknown error'));
@@ -113,11 +127,16 @@ export default function AdminDashboard() {
   });
 
   const resendInviteMutation = useMutation({
-    mutationFn: async (invitation) => {
-      // invitation has { email, role, id (audit log id) }
-      await base44.users.resendInvite(invitation.email);
+    mutationFn: async (pendingUser) => {
+      await base44.users.resendInvite(pendingUser.email);
+
+      // Update invited_at timestamp
+      await base44.entities.User.update(pendingUser.id, {
+        invited_at: new Date().toISOString(),
+      });
     },
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['users'] });
       toast.success('Invitation resent successfully');
     },
     onError: () => {
@@ -126,13 +145,12 @@ export default function AdminDashboard() {
   });
 
   const cancelInviteMutation = useMutation({
-    mutationFn: async (invitation) => {
-      // invitation has { email, role, id (audit log id) }
-      // Delete the audit log entry to remove from pending list
-      await base44.entities.AuditLog.delete(invitation.id);
+    mutationFn: async (pendingUser) => {
+      // Delete the user record to cancel invitation
+      await base44.entities.User.delete(pendingUser.id);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['auditLogs'] });
+      queryClient.invalidateQueries({ queryKey: ['users'] });
       toast.success('Invitation cancelled');
     },
     onError: () => {
@@ -410,11 +428,10 @@ export default function AdminDashboard() {
               employees={employees}
               teams={teams}
               schedules={schedules}
-              auditLogs={auditLogs}
               onInviteUser={(data) => inviteUserMutation.mutate(data)}
               onUpdateEmployee={(data) => updateEmployeeMutation.mutate(data)}
-              onResendInvite={(invitation) => resendInviteMutation.mutate(invitation)}
-              onCancelInvite={(invitation) => cancelInviteMutation.mutate(invitation)}
+              onResendInvite={(pendingUser) => resendInviteMutation.mutate(pendingUser)}
+              onCancelInvite={(pendingUser) => cancelInviteMutation.mutate(pendingUser)}
               onDeleteUser={(user) => deleteUserMutation.mutate(user)}
               isLoading={inviteUserMutation.isPending || updateEmployeeMutation.isPending || deleteUserMutation.isPending}
             />

@@ -19,7 +19,6 @@ export default function UserManagement({
   employees = [],
   teams = [],
   schedules = [],
-  auditLogs = [],
   onInviteUser,
   onUpdateEmployee,
   onResendInvite,
@@ -38,36 +37,13 @@ export default function UserManagement({
   const getEmployeeForUser = (userId) => employees.find(e => e.user_id === userId);
   const getTeamName = (teamId) => teams.find(t => t.id === teamId)?.name || '-';
 
-  // Get pending invitations from AuditLog entries
-  // These are invitations sent but user hasn't registered yet
-  const pendingInvitationLogs = auditLogs
-    .filter(log => log.entity_type === 'PendingInvitation' && log.action === 'invite')
-    .map(log => {
-      try {
-        const data = JSON.parse(log.after_data || '{}');
-        return {
-          id: log.id,
-          email: data.email || log.entity_id,
-          role: data.role || 'user',
-          invited_at: data.invited_at || log.created_date,
-        };
-      } catch {
-        return {
-          id: log.id,
-          email: log.entity_id,
-          role: 'user',
-          invited_at: log.created_date,
-        };
-      }
-    })
-    // Filter out invitations for users who have already registered
-    .filter(inv => !users.find(u => u.email === inv.email));
+  // Pending invitations = users with status 'pending_invitation'
+  const pendingInvitations = users.filter(u => u.status === 'pending_invitation');
 
-  // Active users are those who have completed their profile
-  const activeUsers = users.filter(u => u.profile_completed === true);
-
-  // Users who registered but haven't completed profile yet
-  const incompleteUsers = users.filter(u => u.profile_completed !== true);
+  // Active users = users with status 'active' or completed profile
+  const activeUsers = users.filter(u =>
+    u.status === 'active' || (u.status !== 'pending_invitation' && u.profile_completed === true)
+  );
 
   const filteredActiveUsers = activeUsers.filter(u => {
     const searchLower = searchTerm.toLowerCase();
@@ -78,8 +54,8 @@ export default function UserManagement({
     );
   });
 
-  const filteredPendingInvitations = pendingInvitationLogs.filter(inv =>
-    inv.email?.toLowerCase().includes(searchTerm.toLowerCase())
+  const filteredPendingInvitations = pendingInvitations.filter(u =>
+    u.email?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const handleInvite = () => {
@@ -163,7 +139,7 @@ export default function UserManagement({
               </TabsTrigger>
               <TabsTrigger value="pending" className="gap-2">
                 <Clock className="w-4 h-4" />
-                Pending Invitations ({pendingInvitationLogs.length})
+                Pending Invitations ({pendingInvitations.length})
               </TabsTrigger>
             </TabsList>
 
@@ -243,9 +219,9 @@ export default function UserManagement({
                   <Clock className="w-12 h-12 mx-auto mb-4 text-slate-300" />
                   <h3 className="text-lg font-semibold text-slate-800 mb-2">No Pending Invitations</h3>
                   <p className="text-slate-500">
-                    {pendingInvitationLogs.length === 0
+                    {pendingInvitations.length === 0
                       ? "No pending invitations. Invite users using the button above."
-                      : `${pendingInvitationLogs.length} pending invitation(s) filtered out by search`
+                      : `${pendingInvitations.length} pending invitation(s) filtered out by search`
                     }
                   </p>
                 </div>
