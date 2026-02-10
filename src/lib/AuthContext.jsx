@@ -2,101 +2,95 @@ import React, { createContext, useState, useContext, useEffect, useCallback } fr
 import { base44 } from '@/api/base44Client';
 import { appParams } from '@/lib/app-params';
 
-const AuthContext = createContext();
+const AuthContext = createContext(null);
 
-export const AuthProvider = ({ children }) => {
+export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [employee, setEmployee] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [authError, setAuthError] = useState(null);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
     checkAuth();
   }, []);
 
-  const checkAuth = async () => {
+  async function checkAuth() {
     setIsLoading(true);
-    setAuthError(null);
+    setError(null);
 
-    // No token means user needs to log in
     if (!appParams.token) {
-      setAuthError('no_token');
+      setError('no_token');
       setIsLoading(false);
       return;
     }
 
     try {
-      // Authenticate user with the token
       const currentUser = await base44.auth.me();
       setUser(currentUser);
 
-      // Try to fetch employee record (may not exist yet for new users)
+      // Try to get employee record
       try {
         const employees = await base44.entities.Employee.filter({ user_id: currentUser.id });
         if (employees.length > 0) {
           setEmployee(employees[0]);
         }
       } catch (e) {
-        // No employee record yet - that's fine for new users
-        console.log('No employee record found for user');
+        // No employee yet - that's fine
       }
-    } catch (error) {
-      console.error('Auth error:', error);
-      setAuthError('auth_failed');
+    } catch (e) {
+      console.error('Auth failed:', e);
+      setError('auth_failed');
     } finally {
       setIsLoading(false);
     }
-  };
+  }
 
-  const refreshUserData = useCallback(async () => {
+  const refresh = useCallback(async () => {
     if (!appParams.token) return;
-
     try {
       const currentUser = await base44.auth.me();
       setUser(currentUser);
-
       const employees = await base44.entities.Employee.filter({ user_id: currentUser.id });
       if (employees.length > 0) {
         setEmployee(employees[0]);
       }
-    } catch (error) {
-      console.error('Error refreshing user data:', error);
+    } catch (e) {
+      console.error('Refresh failed:', e);
     }
   }, []);
 
-  const logout = () => {
+  const redirectToLogin = useCallback(() => {
+    base44.auth.redirectToLogin(window.location.href);
+  }, []);
+
+  const logout = useCallback(() => {
     setUser(null);
     setEmployee(null);
     base44.auth.logout();
-  };
+  }, []);
 
-  const redirectToLogin = () => {
-    base44.auth.redirectToLogin(window.location.href);
+  const value = {
+    user,
+    employee,
+    isLoading,
+    error,
+    isProfileComplete: user?.profile_completed === true,
+    refresh,
+    redirectToLogin,
+    logout,
   };
-
-  // Profile is complete if user has first_name, last_name, and profile_completed flag
-  const isProfileComplete = user?.profile_completed === true;
 
   return (
-    <AuthContext.Provider value={{
-      user,
-      employee,
-      isLoading,
-      authError,
-      isProfileComplete,
-      refreshUserData,
-      logout,
-      redirectToLogin,
-    }}>
+    <AuthContext.Provider value={value}>
       {children}
     </AuthContext.Provider>
   );
-};
+}
 
-export const useAuth = () => {
+export function useAuth() {
   const context = useContext(AuthContext);
   if (!context) {
-    throw new Error('useAuth must be used within an AuthProvider');
+    throw new Error('useAuth must be used within AuthProvider');
   }
   return context;
-};
+}
