@@ -14,17 +14,18 @@ import EmployeeProfileDialog from '@/components/employee/EmployeeProfileDialog';
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { formatUserName, getUserInitials } from '@/components/utils/helpers';
 
-export default function UserManagement({ 
-  users = [], 
+export default function UserManagement({
+  users = [],
   employees = [],
   teams = [],
   schedules = [],
-  onInviteUser, 
+  auditLogs = [],
+  onInviteUser,
   onUpdateEmployee,
   onResendInvite,
   onCancelInvite,
   onDeleteUser,
-  isLoading 
+  isLoading
 }) {
   const [searchTerm, setSearchTerm] = useState('');
   const [showInviteDialog, setShowInviteDialog] = useState(false);
@@ -37,16 +38,36 @@ export default function UserManagement({
   const getEmployeeForUser = (userId) => employees.find(e => e.user_id === userId);
   const getTeamName = (teamId) => teams.find(t => t.id === teamId)?.name || '-';
 
-  // Separate active users and pending invitations.
-  // A user is "pending" if:
-  // - status is 'pending_invitation', OR
-  // - profile_completed is not true (undefined, null, or false)
-  const pendingInvitations = users.filter(u =>
-    u.status === 'pending_invitation' || u.profile_completed !== true
-  );
-  const activeUsers = users.filter(u =>
-    u.status !== 'pending_invitation' && u.profile_completed === true
-  );
+  // Get pending invitations from AuditLog entries
+  // These are invitations sent but user hasn't registered yet
+  const pendingInvitationLogs = auditLogs
+    .filter(log => log.entity_type === 'PendingInvitation' && log.action === 'invite')
+    .map(log => {
+      try {
+        const data = JSON.parse(log.after_data || '{}');
+        return {
+          id: log.id,
+          email: data.email || log.entity_id,
+          role: data.role || 'user',
+          invited_at: data.invited_at || log.created_date,
+        };
+      } catch {
+        return {
+          id: log.id,
+          email: log.entity_id,
+          role: 'user',
+          invited_at: log.created_date,
+        };
+      }
+    })
+    // Filter out invitations for users who have already registered
+    .filter(inv => !users.find(u => u.email === inv.email));
+
+  // Active users are those who have completed their profile
+  const activeUsers = users.filter(u => u.profile_completed === true);
+
+  // Users who registered but haven't completed profile yet
+  const incompleteUsers = users.filter(u => u.profile_completed !== true);
 
   const filteredActiveUsers = activeUsers.filter(u => {
     const searchLower = searchTerm.toLowerCase();
@@ -57,8 +78,8 @@ export default function UserManagement({
     );
   });
 
-  const filteredPendingInvitations = pendingInvitations.filter(u => 
-    u.email?.toLowerCase().includes(searchTerm.toLowerCase())
+  const filteredPendingInvitations = pendingInvitationLogs.filter(inv =>
+    inv.email?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const handleInvite = () => {
@@ -142,7 +163,7 @@ export default function UserManagement({
               </TabsTrigger>
               <TabsTrigger value="pending" className="gap-2">
                 <Clock className="w-4 h-4" />
-                Pending Invitations ({pendingInvitations.length})
+                Pending Invitations ({pendingInvitationLogs.length})
               </TabsTrigger>
             </TabsList>
 
@@ -222,9 +243,9 @@ export default function UserManagement({
                   <Clock className="w-12 h-12 mx-auto mb-4 text-slate-300" />
                   <h3 className="text-lg font-semibold text-slate-800 mb-2">No Pending Invitations</h3>
                   <p className="text-slate-500">
-                    {pendingInvitations.length === 0 
-                      ? "All invited users have completed registration"
-                      : `${pendingInvitations.length} pending invitation(s) filtered out by search`
+                    {pendingInvitationLogs.length === 0
+                      ? "No pending invitations. Invite users using the button above."
+                      : `${pendingInvitationLogs.length} pending invitation(s) filtered out by search`
                     }
                   </p>
                 </div>
